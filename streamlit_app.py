@@ -4,26 +4,28 @@ import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --- 1. CONFIGURAZIONE ---
-# INSERISCI QUI L'ID DEL TUO FOGLIO GOOGLE (es. 1ABC123456789)
-ID_FOGLIO_GOOGLE = "https://docs.google.com/spreadsheets/d/1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc/edit?gid=0#gid=0" 
+# --- CONFIGURAZIONE GOOGLE SHEETS ---
+# Sostituisci con l'ID del tuo foglio (quella stringa lunga tra /d/ e /edit nell'URL)
+ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
 
-# --- 2. FUNZIONI DI SERVIZIO (NON TOCCARE) ---
 def connetti_foglio():
     try:
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        creds = ServiceAccountCredentials.from_json_keyfile_name('google_key.json', scope)
+        # Legge le credenziali dai Secrets di Streamlit Cloud
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(st.secrets["gcp_service_account"]), scope)
         client = gspread.authorize(creds)
-        # Si connette al primo foglio del file
         return client.open_by_key(ID_FOGLIO_GOOGLE).sheet1
     except Exception as e:
-        st.error(f"Errore di connessione a Google: {e}")
+        st.error(f"Errore di connessione: {e}")
         return None
 
 def crea_db_vuoto():
     return {
         "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
-        "eventi": [],
+        "eventi": [
+            {"id": "1", "data": "2026-06-23", "tipo": "Allenamento", "nota": "Campo Principale - ore 17:30"},
+            {"id": "2", "data": "2026-06-27", "tipo": "Partita", "avversario": "Real City", "luogo": "Trasferta", "ora_partita": "15:00", "ora_convocazione": "14:00", "indirizzo": "Via Stadio 5, Torino", "nota": "Campionato"}
+        ],
         "storico_presenze": {},
         "storico_minutaggio": {},
         "storico_titolari": {},
@@ -36,7 +38,6 @@ def crea_db_vuoto():
 def caricare_dati():
     sheet = connetti_foglio()
     if sheet:
-        # Legge il contenuto della cella A1
         contenuto = sheet.cell(1, 1).value
         if contenuto:
             return json.loads(contenuto)
@@ -45,17 +46,35 @@ def caricare_dati():
 def salvare_dati():
     sheet = connetti_foglio()
     if sheet:
-        # Trasforma tutto il dizionario in un testo lungo e lo salva nella cella A1
         stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
         sheet.update_cell(1, 1, stringa_json)
 
-# --- 3. INIZIO APP ---
-st.set_page_config(page_title="MisterApp - Cloud", layout="centered")
+# --- INIZIO APPLICAZIONE ---
+st.set_page_config(page_title="MisterApp - Settore Giovanile", layout="centered")
 
-# Inizializza i dati caricandoli dal foglio
+# CSS
+st.markdown("""
+    <style>
+    .card { background-color: var(--secondary-background-color); color: var(--text-color); border-radius: 15px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+    [data-testid="stSidebar"] div[role="radiogroup"] label { padding: 12px 15px !important; margin-bottom: 10px !important; background-color: var(--secondary-background-color); border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
+    </style>
+""", unsafe_allow_html=True)
+
+# Stato iniziale
 if "db" not in st.session_state:
     st.session_state.db = caricare_dati()
 
+# (Qui prosegue il resto del tuo codice originale che hai postato prima...)
+# Assicurati che ogni volta che richiami 'salvare_dati()' nel tuo codice, 
+# il salvataggio avvenga automaticamente sul Cloud Google.
+
+# --- IL TUO MENU E LOGICA (Incolla qui tutto il tuo vecchio codice) ---
+# Esempio:
+menu = st.sidebar.radio("Navigazione", [
+    "🔵 Calendario Allenamenti", "🟢 Calendario e Convocazioni", 
+    "📊 Statistiche Allenamenti", "🏆 Statistiche Giocatori",
+    "📈 Statistiche Squadra", "🏃 Gestione Rosa"
+])
 import streamlit as st
 import datetime
 import json
