@@ -1,16 +1,61 @@
-# Connessione al foglio
-conn = st.connection("gsheets", type=GSheetsConnection)
+import streamlit as st
+import datetime
+import json
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+# --- 1. CONFIGURAZIONE ---
+# INSERISCI QUI L'ID DEL TUO FOGLIO GOOGLE (es. 1ABC123456789)
+ID_FOGLIO_GOOGLE = "https://docs.google.com/spreadsheets/d/1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc/edit?gid=0#gid=0" 
+
+# --- 2. FUNZIONI DI SERVIZIO (NON TOCCARE) ---
+def connetti_foglio():
+    try:
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_name('google_key.json', scope)
+        client = gspread.authorize(creds)
+        # Si connette al primo foglio del file
+        return client.open_by_key(ID_FOGLIO_GOOGLE).sheet1
+    except Exception as e:
+        st.error(f"Errore di connessione a Google: {e}")
+        return None
+
+def crea_db_vuoto():
+    return {
+        "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
+        "eventi": [],
+        "storico_presenze": {},
+        "storico_minutaggio": {},
+        "storico_titolari": {},
+        "storico_moduli": {},
+        "storico_numeri": {},
+        "storico_gol": {},
+        "storico_risultati": {}
+    }
 
 def caricare_dati():
-    # Legge il foglio come se fosse un database
-    data = conn.read(spreadsheet="https://docs.google.com/spreadsheets/d/1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc/edit?gid=0#gid=0", usecols=[0,1]) 
-    # Qui dovrai adattare la logica per convertire il foglio nel tuo dizionario "db"
-    return data 
+    sheet = connetti_foglio()
+    if sheet:
+        # Legge il contenuto della cella A1
+        contenuto = sheet.cell(1, 1).value
+        if contenuto:
+            return json.loads(contenuto)
+    return crea_db_vuoto()
 
 def salvare_dati():
-    # Invece di json.dump, scrivi nel foglio
-    # conn.update(...)
-    pass
+    sheet = connetti_foglio()
+    if sheet:
+        # Trasforma tutto il dizionario in un testo lungo e lo salva nella cella A1
+        stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
+        sheet.update_cell(1, 1, stringa_json)
+
+# --- 3. INIZIO APP ---
+st.set_page_config(page_title="MisterApp - Cloud", layout="centered")
+
+# Inizializza i dati caricandoli dal foglio
+if "db" not in st.session_state:
+    st.session_state.db = caricare_dati()
+
 import streamlit as st
 import datetime
 import json
