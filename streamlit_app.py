@@ -7,7 +7,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 # --- CONFIGURAZIONE GOOGLE SHEETS ---
-ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
+ID_FOGLIO_GOOGLE = "https://docs.google.com/spreadsheets/d/1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc/edit?gid=0#gid=0" 
 
 def connetti_foglio():
     try:
