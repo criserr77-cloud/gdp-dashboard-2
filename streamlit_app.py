@@ -1,17 +1,15 @@
 import streamlit as st
-import datetime
 import json
-import os
-import base64
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 # --- CONFIGURAZIONE GOOGLE SHEETS ---
-ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
+ID_FOGLIO_GOOGLE = "METTI_QUI_IL_TUO_ID" 
 
 def connetti_foglio():
     try:
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        # Legge le credenziali dai Secrets di Streamlit Cloud
         creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(st.secrets["gcp_service_account"]), scope)
         client = gspread.authorize(creds)
         return client.open_by_key(ID_FOGLIO_GOOGLE).sheet1
@@ -25,9 +23,12 @@ def caricare_dati():
         contenuto = sheet.cell(1, 1).value
         if contenuto:
             dati = json.loads(contenuto)
-            for k in ["storico_minutaggio", "storico_titolari", "storico_moduli", "storico_numeri", "storico_gol", "storico_risultati"]:
+            # Controllo chiavi esistenti
+            for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", "storico_numeri", "storico_gol", "storico_risultati"]:
                 if k not in dati: dati[k] = {}
             return dati
+    
+    # Ritorno dati di default se foglio vuoto o errore
     return {
         "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
         "eventi": [
@@ -44,23 +45,10 @@ def salvare_dati():
         stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
         sheet.update_cell(1, 1, stringa_json)
 
-# --- CONFIGURAZIONE PAGINA ---
-st.set_page_config(page_title="MisterApp - Settore Giovanile", layout="centered")
-
-# --- CSS ---
-st.markdown("""
-    <style>
-    .card { background-color: var(--secondary-background-color); color: var(--text-color); border-radius: 15px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
-    [data-testid="stSidebar"] div[role="radiogroup"] label { padding: 12px 15px !important; margin-bottom: 10px !important; background-color: var(--secondary-background-color); border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
-    [data-testid="stSidebar"] div[role="radiogroup"] label p { font-size: 18px !important; font-weight: 600 !important; color: var(--text-color) !important; }
-    </style>
-""", unsafe_allow_html=True)
-
-# Inizializzazione DB
+# Inizializzazione dati
 if "db" not in st.session_state:
     st.session_state.db = caricare_dati()
-
-import streamlit as st
+    import streamlit as st
 import datetime
 import json
 import os
