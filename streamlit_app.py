@@ -38,7 +38,7 @@ def caricare_dati():
         "storico_presenze": {}, "storico_minutaggio": {}, "storico_titolari": {},
         "storico_moduli": {}, "storico_numeri": {}, "storico_gol": {}, "storico_risultati": {}
     }
-st.write("Sto provando a salvare...")
+
 salvare_dati()
 def salvare_dati():
     sheet = connetti_foglio()
