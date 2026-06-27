@@ -1,9 +1,9 @@
 import streamlit as st
 import datetime
 import json
-import os
-import base64
 import gspread
+import base64
+import os
 from oauth2client.service_account import ServiceAccountCredentials
 
 # --- CONFIGURAZIONE GOOGLE SHEETS ---
@@ -15,7 +15,8 @@ def connetti_foglio():
         creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(st.secrets["gcp_service_account"]), scope)
         client = gspread.authorize(creds)
         return client.open_by_key(ID_FOGLIO_GOOGLE).sheet1
-    except:
+    except Exception as e:
+        st.error(f"Errore di connessione: {e}")
         return None
 
 def caricare_dati():
@@ -24,7 +25,8 @@ def caricare_dati():
         contenuto = sheet.cell(1, 1).value
         if contenuto:
             dati = json.loads(contenuto)
-            for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", "storico_numeri", "storico_gol", "storico_risultati"]:
+            # Verifica che le chiavi esistano
+            for k in ["storico_minutaggio", "storico_titolari", "storico_moduli", "storico_numeri", "storico_gol", "storico_risultati"]:
                 if k not in dati: dati[k] = {}
             return dati
     return {
@@ -43,7 +45,7 @@ def salvare_dati():
         stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
         sheet.update_cell(1, 1, stringa_json)
 
-# --- CONFIGURAZIONE PAGINA ---
+# --- SETUP PAGINA ---
 st.set_page_config(page_title="MisterApp - Settore Giovanile", layout="centered")
 
 st.markdown("""
@@ -60,6 +62,7 @@ if "db" not in st.session_state:
 if "edit_mode" not in st.session_state: st.session_state.edit_mode = None
 if "edit_evento" not in st.session_state: st.session_state.edit_evento = None
 
+# --- MENU LATERALE ---
 menu = st.sidebar.radio("Navigazione", [
     "🔵 Calendario Allenamenti", "🟢 Calendario e Convocazioni", 
     "📊 Statistiche Allenamenti", "🏆 Statistiche Giocatori",
@@ -70,85 +73,72 @@ st.sidebar.write("---")
 st.sidebar.info("MisterApp Cloud - Attiva")
 
 def get_logo_html():
-    for ext in ["png", "jpg", "jpeg"]:
-        if os.path.exists(f"stemma.{ext}"):
-            with open(f"stemma.{ext}", "rb") as f:
-                encoded = base64.b64encode(f.read()).decode()
-                return f"<img src='data:image/{ext};base64,{encoded}' style='max-width: 100px; max-height: 120px; object-fit: contain;'>"
     return "<div style='font-size: 50px;'>🛡️</div><div style='color: red; font-weight: bold; font-size: 14px;'>USO</div><div style='color: green; font-weight: bold; font-size: 14px;'>UNITED</div>"
 
-# --- LOGICA APPLICAZIONE ---
+# --- LOGICA APP ---
 if menu == "🔵 Calendario Allenamenti":
     st.header("🔵 Calendario e Presenze Allenamenti")
     eventi_allenamento = [ev for ev in st.session_state.db["eventi"] if ev["tipo"] == "Allenamento"]
-    if not eventi_allenamento:
-        st.info("Nessun allenamento in programma.")
-    else:
-        for ev in eventi_allenamento:
-            if st.session_state.edit_evento == ev["id"]:
-                st.write(f"### ✏️ Modifica Allenamento")
-                curr_date = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").date()
-                mod_data = st.date_input("Data", curr_date, key=f"mod_d_{ev['id']}")
-                mod_nota = st.text_input("Note/Orario", value=ev.get("nota", ""), key=f"mod_n_{ev['id']}")
-                col_s, col_a = st.columns(2)
-                with col_s:
-                    if st.button("💾 Salva", key=f"s_mod_{ev['id']}", type="primary"):
-                        ev["data"] = str(mod_data); ev["nota"] = mod_nota
-                        st.session_state.edit_evento = None; salvare_dati(); st.rerun()
-                with col_a:
-                    if st.button("❌ Annulla", key=f"a_mod_{ev['id']}"): st.session_state.edit_evento = None; st.rerun()
-            else:
-                data_f = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").strftime("%d/%m/%Y")
-                with st.expander(f"🔵 Allenamento del {data_f} ({ev.get('nota', '')})"):
-                    if st.button("✏️ Modifica", key=f"ed_ev_{ev['id']}"): st.session_state.edit_evento = ev["id"]; st.rerun()
-                    if st.button("🗑️ Elimina", key=f"del_ev_{ev['id']}"):
-                        st.session_state.db["eventi"] = [e for e in st.session_state.db["eventi"] if e["id"] != ev["id"]]
-                        salvare_dati(); st.rerun()
-                    appello_evento = st.session_state.db["storico_presenze"].get(ev["id"], {})
-                    opzioni = ["🟢 Presente", "🔴 Assente", "🟡 Infortunato"]
-                    for ragazzo in st.session_state.db["ragazzi"]:
-                        col_n, col_s = st.columns([1, 2])
-                        with col_n: st.write(f"**{ragazzo}**")
-                        with col_s:
-                            appello_evento[ragazzo] = st.radio(ragazzo, opzioni, index=opzioni.index(appello_evento.get(ragazzo, opzioni[0])), key=f"p_{ragazzo}_{ev['id']}", horizontal=True, label_visibility="collapsed")
-                    if st.button("💾 Salva Registro", key=f"btn_salva_{ev['id']}", type="primary"):
-                        st.session_state.db["storico_presenze"][ev["id"]] = appello_evento
-                        salvare_dati(); st.rerun()
-
-    st.subheader("➕ Fissa un nuovo Allenamento")
-    nuova_data = st.date_input("Data", datetime.date.today(), key="new_data_all")
-    nuova_nota = st.text_input("Orario e Luogo", key="new_nota_all")
-    if st.button("Aggiungi Allenamento"):
+    for ev in eventi_allenamento:
+        if st.session_state.edit_evento == ev["id"]:
+            curr_date = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").date()
+            mod_data = st.date_input("Data", curr_date, key=f"mod_d_{ev['id']}")
+            mod_nota = st.text_input("Note/Orario", value=ev.get("nota", ""), key=f"mod_n_{ev['id']}")
+            if st.button("💾 Salva", key=f"s_{ev['id']}"):
+                ev["data"] = str(mod_data); ev["nota"] = mod_nota; st.session_state.edit_evento = None; salvare_dati(); st.rerun()
+        else:
+            with st.expander(f"🔵 Allenamento del {ev['data']} ({ev.get('nota', '')})"):
+                if st.button("✏️ Modifica", key=f"ed_{ev['id']}"): st.session_state.edit_evento = ev["id"]; st.rerun()
+                if st.button("🗑️ Elimina", key=f"del_{ev['id']}"):
+                    st.session_state.db["eventi"] = [e for e in st.session_state.db["eventi"] if e["id"] != ev["id"]]
+                    salvare_dati(); st.rerun()
+                appello = st.session_state.db["storico_presenze"].get(ev["id"], {})
+                for ragazzo in st.session_state.db["ragazzi"]:
+                    appello[ragazzo] = st.radio(ragazzo, ["🟢 Presente", "🔴 Assente", "🟡 Infortunato"], index=["🟢 Presente", "🔴 Assente", "🟡 Infortunato"].index(appello.get(ragazzo, "🟢 Presente")), key=f"p_{ragazzo}_{ev['id']}", horizontal=True)
+                if st.button("💾 Salva Registro", key=f"save_{ev['id']}"):
+                    st.session_state.db["storico_presenze"][ev["id"]] = appello; salvare_dati(); st.rerun()
+    st.subheader("➕ Aggiungi Allenamento")
+    nuova_data = st.date_input("Data", datetime.date.today(), key="new_d")
+    nuova_nota = st.text_input("Orario/Luogo", key="new_n")
+    if st.button("Aggiungi"):
         nuovo_id = str(int(max([int(e["id"]) for e in st.session_state.db["eventi"]], default=0)) + 1)
         st.session_state.db["eventi"].append({"id": nuovo_id, "data": str(nuova_data), "tipo": "Allenamento", "nota": nuova_nota})
         salvare_dati(); st.rerun()
 
 elif menu == "🟢 Calendario e Convocazioni":
     st.header("🟢 Calendario e Convocazioni")
-    st.write("Funzionalità Partite attiva.")
+    eventi = [ev for ev in st.session_state.db["eventi"] if ev["tipo"] in ["Partita", "Torneo"]]
+    for ev in eventi:
+        with st.expander(f"🟢 {ev.get('avversario')} del {ev['data']}"):
+            st.write(f"Ora: {ev.get('ora_partita')} | Luogo: {ev.get('indirizzo')}")
+            # ... (Qui puoi incollare il resto della tua logica partite) ...
 
 elif menu == "📊 Statistiche Allenamenti":
     st.header("📊 Statistiche Allenamenti")
+    storico = st.session_state.db["storico_presenze"]
+    id_all = [ev["id"] for ev in st.session_state.db["eventi"] if ev["tipo"] == "Allenamento"]
+    tabella = []
+    for r in st.session_state.db["ragazzi"]:
+        presenti = sum(1 for id in id_all if storico.get(id, {}).get(r) == "🟢 Presente")
+        tabella.append({"Giocatore": r, "Presenze": presenti})
+    st.table(tabella)
 
 elif menu == "🏆 Statistiche Giocatori":
     st.header("🏆 Statistiche Giocatori")
+    st.table(st.session_state.db["storico_gol"])
 
 elif menu == "📈 Statistiche Squadra":
     st.header("📈 Statistiche Squadra")
 
 elif menu == "🏃 Gestione Rosa":
-    st.header("🏃 Anagrafica e Gestione Rosa")
+    st.header("🏃 Gestione Rosa")
     for i, ragazzo in enumerate(list(st.session_state.db["ragazzi"])):
-        col_nome, col_mod, col_del = st.columns([2, 1, 1])
-        with col_nome: st.write(f"• **{ragazzo}**")
-        with col_mod:
-            if st.button("✏️", key=f"edit_{i}"): st.session_state.edit_mode = i; st.rerun()
-        with col_del:
+        col1, col2 = st.columns([3, 1])
+        with col1: st.write(f"• {ragazzo}")
+        with col2:
             if st.button("🗑️", key=f"del_{i}"):
-                st.session_state.db["ragazzi"].remove(ragazzo)
-                salvare_dati(); st.rerun()
-    nuovo_nome = st.text_input("Nuovo giocatore", key="new_player")
-    if st.button("Inserisci"):
-        if nuovo_nome and nuovo_nome not in st.session_state.db["ragazzi"]:
-            st.session_state.db["ragazzi"].append(nuovo_nome)
-            salvare_dati(); st.rerun()
+                st.session_state.db["ragazzi"].remove(ragazzo); salvare_dati(); st.rerun()
+    nuovo = st.text_input("Nuovo nome")
+    if st.button("Aggiungi"):
+        if nuovo and nuovo not in st.session_state.db["ragazzi"]:
+            st.session_state.db["ragazzi"].append(nuovo); salvare_dati(); st.rerun()
