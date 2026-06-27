@@ -1,15 +1,12 @@
 import streamlit as st
-import datetime
 import json
-import os
-import base64
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 # --- CONFIGURAZIONE GOOGLE SHEETS ---
 ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
 
-def connetti_foglio()1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc:
+def connetti_foglio():
     try:
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         # Legge le credenziali dai Secrets di Streamlit Cloud
@@ -23,18 +20,14 @@ def connetti_foglio()1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc:
 def caricare_dati():
     sheet = connetti_foglio()
     if sheet:
-        try:
-            contenuto = sheet.acell('A1').value
-            if contenuto:
-                dati = json.loads(contenuto)
-                # Controllo chiavi esistenti
-                for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", "storico_numeri", "storico_gol", "storico_risultati"]:
-                    if k not in dati: 
-                        dati[k] = {}
-                return dati
-        except Exception as e:
-            pass # Se il foglio è vuoto o c'è un errore, passa ai dati di default
-            
+        contenuto = sheet.cell(1, 1).value
+        if contenuto:
+            dati = json.loads(contenuto)
+            # Controllo chiavi esistenti
+            for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", "storico_numeri", "storico_gol", "storico_risultati"]:
+                if k not in dati: dati[k] = {}
+            return dati
+    
     # Ritorno dati di default se foglio vuoto o errore
     return {
         "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
@@ -42,24 +35,24 @@ def caricare_dati():
             {"id": "1", "data": "2026-06-23", "tipo": "Allenamento", "nota": "Campo Principale - ore 17:30"},
             {"id": "2", "data": "2026-06-27", "tipo": "Partita", "avversario": "Real City", "luogo": "Trasferta", "ora_partita": "15:00", "ora_convocazione": "14:00", "indirizzo": "Via Stadio 5, Torino", "nota": "Campionato"}
         ],
-        "storico_presenze": {},
-        "storico_minutaggio": {},
-        "storico_titolari": {},
-        "storico_moduli": {},
-        "storico_numeri": {},
-        "storico_gol": {},
-        "storico_risultati": {}
+        "storico_presenze": {}, "storico_minutaggio": {}, "storico_titolari": {},
+        "storico_moduli": {}, "storico_numeri": {}, "storico_gol": {}, "storico_risultati": {}
     }
 
 def salvare_dati():
     sheet = connetti_foglio()
     if sheet:
-        try:
-            stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
-            # Metodo robusto per scrivere in A1 senza errori di formattazione
-            sheet.update_acell('A1', stringa_json)
-        except Exception as e:
-            st.error(f"Errore durante il salvataggio: {e}")
+        stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
+        sheet.update_cell(1, 1, stringa_json)
+
+# Inizializzazione dati
+if "db" not in st.session_state:
+    st.session_state.db = caricare_dati()
+    import streamlit as st
+import datetime
+import json
+import os
+import base64
 
 # --- CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="MisterApp - Settore Giovanile", layout="centered")
@@ -93,6 +86,40 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# --- FILE DI SALVATAGGIO (DATABASE LOCALE) ---
+DB_FILE = "misterapp_db.json"
+
+def caricare_dati():
+    if os.path.exists(DB_FILE):
+        with open(DB_FILE, "r", encoding="utf-8") as f:
+            dati = json.load(f)
+            if "storico_minutaggio" not in dati: dati["storico_minutaggio"] = {}
+            if "storico_titolari" not in dati: dati["storico_titolari"] = {}
+            if "storico_moduli" not in dati: dati["storico_moduli"] = {}
+            if "storico_numeri" not in dati: dati["storico_numeri"] = {}
+            if "storico_gol" not in dati: dati["storico_gol"] = {}
+            if "storico_risultati" not in dati: dati["storico_risultati"] = {}
+            return dati
+    else:
+        return {
+            "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
+            "eventi": [
+                {"id": "1", "data": "2026-06-23", "tipo": "Allenamento", "nota": "Campo Principale - ore 17:30"},
+                {"id": "2", "data": "2026-06-27", "tipo": "Partita", "avversario": "Real City", "luogo": "Trasferta", "ora_partita": "15:00", "ora_convocazione": "14:00", "indirizzo": "Via Stadio 5, Torino", "nota": "Campionato"}
+            ],
+            "storico_presenze": {},
+            "storico_minutaggio": {},
+            "storico_titolari": {},
+            "storico_moduli": {},
+            "storico_numeri": {},
+            "storico_gol": {},
+            "storico_risultati": {}
+        }
+
+def salvare_dati():
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(st.session_state.db, f, indent=4, ensure_ascii=False)
+
 def get_logo_html():
     for ext in ["png", "jpg", "jpeg"]:
         if os.path.exists(f"stemma.{ext}"):
@@ -124,7 +151,7 @@ menu = st.sidebar.radio("Navigazione", [
     "🏆 Statistiche Giocatori",
     "📈 Statistiche Squadra",
     "🏃 Gestione Rosa"
-], key="menu_principale")
+])
 
 st.sidebar.write("---")
 st.sidebar.info("MisterApp Cloud - Attiva")
