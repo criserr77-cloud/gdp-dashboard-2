@@ -40,11 +40,20 @@ def caricare_dati():
     }
 
 def salvare_dati():
-    sheet = connetti_foglio()
-    if sheet:
-        stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
-        sheet.update_cell(1, 1, stringa_json)
-
+    def salvare_dati():
+    try:
+        sheet = connetti_foglio()
+        if sheet:
+            # 1. Prepara il testo da salvare
+            stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
+            
+            # 2. Prova a scriverlo nella cella A1
+            sheet.update_acell('A1', stringa_json)
+            
+    except Exception as e:
+        # 3. Se qualcosa va storto, mostra l'errore e FERMA L'APP!
+        st.error(f"❌ VERO ERRORE DI SALVATAGGIO IN A1: {e}")
+        st.stop() # Questo impedisce a st.rerun() di ricaricare la pagina
 # Inizializzazione dati
 if "db" not in st.session_state:
     st.session_state.db = caricare_dati()
