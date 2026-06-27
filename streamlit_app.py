@@ -55,7 +55,8 @@ def salvare_dati():
     try:
         sheet = connetti_foglio()
         if sheet:
-            stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
+            # L'aggiunta di indent=4 formatta il testo andando a capo
+            stringa_json = json.dumps(st.session_state.db, ensure_ascii=False, indent=4)
             sheet.update_acell('A1', stringa_json)
     except Exception as e:
         st.error(f"❌ VERO ERRORE DI SALVATAGGIO IN A1: {e}")
