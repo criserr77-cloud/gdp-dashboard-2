@@ -8,11 +8,13 @@ ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc"
 
 def connetti_foglio():
     try:
-        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        # Legge le credenziali dai Secrets di Streamlit Cloud
+       scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(st.secrets["gcp_service_account"]), scope)
         client = gspread.authorize(creds)
-        return client.open_by_key(ID_FOGLIO_GOOGLE).sheet1
+        sheet = client.open_by_key(ID_FOGLIO_GOOGLE).sheet1
+        # Debug visivo: ti dice a quale foglio si è collegato
+        st.sidebar.write(f"Connesso a: '{sheet.title}'") 
+        return sheet
     except Exception as e:
         st.error(f"Errore connessione: {e}")
         return None
@@ -42,8 +44,15 @@ def caricare_dati():
 def salvare_dati():
     sheet = connetti_foglio()
     if sheet:
-        stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
-        sheet.update_cell(1, 1, stringa_json)
+        try:
+            stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
+            # update è più affidabile di update_cell
+            sheet.update('A1', [[stringa_json]])
+            st.toast("✅ Dati salvati sul foglio!", icon="✅")
+        except Exception as e:
+            st.error(f"Errore scrittura: {e}")
+    else:
+        st.error("Connessione foglio non disponibile.")
 
 # Inizializzazione dati
 if "db" not in st.session_state:
