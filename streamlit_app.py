@@ -834,3 +834,16 @@ elif menu == "🏃 Gestione Rosa":
             salvare_dati()
             st.success(f"⚽ {nuovo_nome_ins.strip()} aggiunto alla rosa!")
             st.rerun()
+            st.write("---")
+st.subheader("🛠️ ZONA DI TEST")
+if st.button("Fai il Test di Scrittura su Google"):
+    st.info("Sto provando a scrivere nella cella A2...")
+    try:
+        foglio_prova = connetti_foglio()
+        if foglio_prova:
+            foglio_prova.update_acell('A2', "IL BOT RIESCE A SCRIVERE!")
+            st.success("✅ TEST SUPERATO! Vai a guardare il foglio Google: nella cella A2 dovresti vedere una scritta.")
+        else:
+            st.error("❌ Il foglio_prova è vuoto. Connessione non riuscita.")
+    except Exception as e:
+        st.error(f"❌ IL VERO ERRORE È QUESTO: {e}")
