@@ -4,7 +4,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 # --- CONFIGURAZIONE GOOGLE SHEETS ---
-ID_FOGLIO_GOOGLE = "METTI_QUI_IL_TUO_ID" 
+ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
 
 def connetti_foglio():
     try:
@@ -12,7 +12,7 @@ def connetti_foglio():
         # Legge le credenziali dai Secrets di Streamlit Cloud
         creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(st.secrets["gcp_service_account"]), scope)
         client = gspread.authorize(creds)
-        return client.open_by_key(1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc).sheet1
+        return client.open_by_key(ID_FOGLIO_GOOGLE).sheet1
     except Exception as e:
         st.error(f"Errore connessione: {e}")
         return None
