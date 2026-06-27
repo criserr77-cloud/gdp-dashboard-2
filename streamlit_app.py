@@ -1,3 +1,16 @@
+# Connessione al foglio
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+def caricare_dati():
+    # Legge il foglio come se fosse un database
+    data = conn.read(spreadsheet="https://docs.google.com/spreadsheets/d/1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc/edit?gid=0#gid=0", usecols=[0,1]) 
+    # Qui dovrai adattare la logica per convertire il foglio nel tuo dizionario "db"
+    return data 
+
+def salvare_dati():
+    # Invece di json.dump, scrivi nel foglio
+    # conn.update(...)
+    pass
 import streamlit as st
 import datetime
 import json
