@@ -1,5 +1,8 @@
 import streamlit as st
+import datetime
 import json
+import os
+import base64
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -20,14 +23,18 @@ def connetti_foglio():
 def caricare_dati():
     sheet = connetti_foglio()
     if sheet:
-        contenuto = sheet.cell(1, 1).value
-        if contenuto:
-            dati = json.loads(contenuto)
-            # Controllo chiavi esistenti
-            for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", "storico_numeri", "storico_gol", "storico_risultati"]:
-                if k not in dati: dati[k] = {}
-            return dati
-    
+        try:
+            contenuto = sheet.acell('A1').value
+            if contenuto:
+                dati = json.loads(contenuto)
+                # Controllo chiavi esistenti
+                for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", "storico_numeri", "storico_gol", "storico_risultati"]:
+                    if k not in dati: 
+                        dati[k] = {}
+                return dati
+        except Exception:
+            pass # Se il foglio è vuoto o c'è un errore, passa ai dati di default
+            
     # Ritorno dati di default se foglio vuoto o errore
     return {
         "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
@@ -35,33 +42,24 @@ def caricare_dati():
             {"id": "1", "data": "2026-06-23", "tipo": "Allenamento", "nota": "Campo Principale - ore 17:30"},
             {"id": "2", "data": "2026-06-27", "tipo": "Partita", "avversario": "Real City", "luogo": "Trasferta", "ora_partita": "15:00", "ora_convocazione": "14:00", "indirizzo": "Via Stadio 5, Torino", "nota": "Campionato"}
         ],
-        "storico_presenze": {}, "storico_minutaggio": {}, "storico_titolari": {},
-        "storico_moduli": {}, "storico_numeri": {}, "storico_gol": {}, "storico_risultati": {}
+        "storico_presenze": {},
+        "storico_minutaggio": {},
+        "storico_titolari": {},
+        "storico_moduli": {},
+        "storico_numeri": {},
+        "storico_gol": {},
+        "storico_risultati": {}
     }
 
 def salvare_dati():
-    def salvare_dati():
     try:
         sheet = connetti_foglio()
         if sheet:
-            # 1. Prepara il testo da salvare
             stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
-            
-            # 2. Prova a scriverlo nella cella A1
             sheet.update_acell('A1', stringa_json)
-            
     except Exception as e:
-        # 3. Se qualcosa va storto, mostra l'errore e FERMA L'APP!
         st.error(f"❌ VERO ERRORE DI SALVATAGGIO IN A1: {e}")
-        st.stop() # Questo impedisce a st.rerun() di ricaricare la pagina
-# Inizializzazione dati
-if "db" not in st.session_state:
-    st.session_state.db = caricare_dati()
-    import streamlit as st
-import datetime
-import json
-import os
-import base64
+        st.stop()
 
 # --- CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="MisterApp - Settore Giovanile", layout="centered")
@@ -69,7 +67,6 @@ st.set_page_config(page_title="MisterApp - Settore Giovanile", layout="centered"
 # --- CSS PER LOOK MOBILE E MENU RESPONSIVE (DARK/LIGHT MODE) ---
 st.markdown("""
     <style>
-    /* Colori nativi del tema di Streamlit per adattarsi perfettamente alla Dark Mode */
     .card { 
         background-color: var(--secondary-background-color); 
         color: var(--text-color);
@@ -94,40 +91,6 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-
-# --- FILE DI SALVATAGGIO (DATABASE LOCALE) ---
-DB_FILE = "misterapp_db.json"
-
-def caricare_dati():
-    if os.path.exists(DB_FILE):
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            dati = json.load(f)
-            if "storico_minutaggio" not in dati: dati["storico_minutaggio"] = {}
-            if "storico_titolari" not in dati: dati["storico_titolari"] = {}
-            if "storico_moduli" not in dati: dati["storico_moduli"] = {}
-            if "storico_numeri" not in dati: dati["storico_numeri"] = {}
-            if "storico_gol" not in dati: dati["storico_gol"] = {}
-            if "storico_risultati" not in dati: dati["storico_risultati"] = {}
-            return dati
-    else:
-        return {
-            "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
-            "eventi": [
-                {"id": "1", "data": "2026-06-23", "tipo": "Allenamento", "nota": "Campo Principale - ore 17:30"},
-                {"id": "2", "data": "2026-06-27", "tipo": "Partita", "avversario": "Real City", "luogo": "Trasferta", "ora_partita": "15:00", "ora_convocazione": "14:00", "indirizzo": "Via Stadio 5, Torino", "nota": "Campionato"}
-            ],
-            "storico_presenze": {},
-            "storico_minutaggio": {},
-            "storico_titolari": {},
-            "storico_moduli": {},
-            "storico_numeri": {},
-            "storico_gol": {},
-            "storico_risultati": {}
-        }
-
-def salvare_dati():
-    with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(st.session_state.db, f, indent=4, ensure_ascii=False)
 
 def get_logo_html():
     for ext in ["png", "jpg", "jpeg"]:
@@ -160,7 +123,7 @@ menu = st.sidebar.radio("Navigazione", [
     "🏆 Statistiche Giocatori",
     "📈 Statistiche Squadra",
     "🏃 Gestione Rosa"
-])
+], key="menu_principale")
 
 st.sidebar.write("---")
 st.sidebar.info("MisterApp Cloud - Attiva")
@@ -843,16 +806,3 @@ elif menu == "🏃 Gestione Rosa":
             salvare_dati()
             st.success(f"⚽ {nuovo_nome_ins.strip()} aggiunto alla rosa!")
             st.rerun()
-            st.write("---")
-st.subheader("🛠️ ZONA DI TEST")
-if st.button("Fai il Test di Scrittura su Google"):
-    st.info("Sto provando a scrivere nella cella A2...")
-    try:
-        foglio_prova = connetti_foglio()
-        if foglio_prova:
-            foglio_prova.update_acell('A2', "IL BOT RIESCE A SCRIVERE!")
-            st.success("✅ TEST SUPERATO! Vai a guardare il foglio Google: nella cella A2 dovresti vedere una scritta.")
-        else:
-            st.error("❌ Il foglio_prova è vuoto. Connessione non riuscita.")
-    except Exception as e:
-        st.error(f"❌ IL VERO ERRORE È QUESTO: {e}")
