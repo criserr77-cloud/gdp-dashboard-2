@@ -42,8 +42,14 @@ def caricare_dati():
 def salvare_dati():
     sheet = connetti_foglio()
     if sheet:
-        stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
-        sheet.update_cell(1, 1, stringa_json)
+        try:
+            stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
+            sheet.update_cell(1, 1, stringa_json)
+            st.toast("✅ Dati salvati correttamente su Google!", icon="🎉")
+        except Exception as e:
+            st.error(f"❌ Errore durante la scrittura: {e}")
+    else:
+        st.error("❌ Connessione al foglio fallita.")
 
 # Inizializzazione dati
 if "db" not in st.session_state:
