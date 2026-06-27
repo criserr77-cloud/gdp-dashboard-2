@@ -9,7 +9,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 # --- CONFIGURAZIONE GOOGLE SHEETS ---
 ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
 
-def connetti_foglio():
+def connetti_foglio()1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc:
     try:
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         # Legge le credenziali dai Secrets di Streamlit Cloud
