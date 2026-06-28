@@ -26,7 +26,8 @@ def caricare_dati():
             contenuto = sheet.acell('A1').value
             if contenuto:
                 dati = json.loads(contenuto)
-                for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", "storico_numeri", "storico_gol", "storico_risultati"]:
+                # Inizializza nuove chiavi se mancano (per compatibilità con i vecchi salvataggi)
+                for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", "storico_numeri", "storico_gol", "storico_risultati", "anagrafica_ruolo", "anagrafica_nascita"]:
                     if k not in dati: dati[k] = {}
                 return dati
         except Exception:
@@ -36,7 +37,8 @@ def caricare_dati():
         "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
         "eventi": [],
         "storico_presenze": {}, "storico_minutaggio": {}, "storico_titolari": {},
-        "storico_moduli": {}, "storico_numeri": {}, "storico_gol": {}, "storico_risultati": {}
+        "storico_moduli": {}, "storico_numeri": {}, "storico_gol": {}, "storico_risultati": {},
+        "anagrafica_ruolo": {}, "anagrafica_nascita": {}
     }
 
 def salvare_dati():
@@ -46,7 +48,7 @@ def salvare_dati():
             stringa_json = json.dumps(st.session_state.db, ensure_ascii=False, indent=4)
             sheet.update_acell('A1', stringa_json)
     except Exception as e:
-        st.error(f"❌ ERRORE: {e}")
+        st.error(f"❌ ERRORE DI SALVATAGGIO: {e}")
         st.stop()
 
 st.set_page_config(page_title="MisterApp", layout="centered")
@@ -59,11 +61,20 @@ def get_logo_html():
                 return f"<img src='data:image/{ext};base64,{encoded}' style='max-width: 100px; max-height: 120px; object-fit: contain;'>"
     return "<div style='font-size: 50px;'>🛡️</div>"
 
-if "db" not in st.session_state: st.session_state.db = caricare_dati()
+# Inizializzazione Session State
+if "db" not in st.session_state: 
+    st.session_state.db = caricare_dati()
+    if "anagrafica_ruolo" not in st.session_state.db: st.session_state.db["anagrafica_ruolo"] = {}
+    if "anagrafica_nascita" not in st.session_state.db: st.session_state.db["anagrafica_nascita"] = {}
+
 if "edit_mode" not in st.session_state: st.session_state.edit_mode = None
 if "edit_evento" not in st.session_state: st.session_state.edit_evento = None
 
-menu = st.sidebar.radio("Navigazione", ["🔵 Calendario Allenamenti", "🟢 Calendario e Convocazioni", "📊 Statistiche Allenamenti", "🏆 Statistiche Giocatori", "📈 Statistiche Squadra", "🏃 Gestione Rosa"])
+menu = st.sidebar.radio("Navigazione", [
+    "🔵 Calendario Allenamenti", "🟢 Calendario e Convocazioni", 
+    "📊 Statistiche Allenamenti", "🏆 Statistiche Giocatori", 
+    "📈 Statistiche Squadra", "🏃 Gestione Rosa"
+])
 
 # ==========================================
 # SCHERMATA 1: ALLENAMENTI
@@ -156,6 +167,8 @@ if menu == "🔵 Calendario Allenamenti":
 # ==========================================
 elif menu == "🟢 Calendario e Convocazioni":
     st.header("🟢 Calendario e Convocazioni")
+    
+    st.subheader("Le tue Gare:")
     eventi_partita = [ev for ev in st.session_state.db["eventi"] if ev["tipo"] in ["Partita", "Torneo"]]
     opzioni_tipo_partita = ["Campionato", "Amichevole", "Coppa Brescia"]
     
@@ -172,6 +185,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     mod_data = st.date_input("Data", curr_date, key=f"mod_dp_{ev['id']}")
                     mod_avv = st.text_input("Avversario", value=ev.get("avversario", ""), key=f"mod_avv_{ev['id']}")
                     mod_luogo = st.selectbox("Luogo", ["Casa", "Trasferta"], index=0 if ev.get("luogo", "Casa")=="Casa" else 1, key=f"mod_lu_{ev['id']}")
+                    
                     if mod_luogo == "Trasferta":
                         mod_indirizzo = st.text_input("Indirizzo del campo", value=ev.get("indirizzo", ""), key=f"mod_ind_{ev['id']}")
                     else:
@@ -268,6 +282,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     
                     logo_immagine = get_logo_html()
                     
+                    # HTML Convocazioni
                     html_distinta = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
 <tr>
@@ -291,17 +306,16 @@ elif menu == "🟢 Calendario e Convocazioni":
 </table>
 </div>"""
 
+                    # HTML Formazione (senza ora e luogo)
                     html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
 <tr>
-<td rowspan='6' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
+<td rowspan='4' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
 <td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px; background-color: #f0f0f0;'>FORMAZIONE UFFICIALE</td>
 </tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px; font-weight: bold;'>TIPO PARTITA: {tipo_partita}</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>DATA: {data_f}</td></tr>
-<tr><td style='border: 1px solid black; padding: 5px;'>ORA PARTITA: {ev.get("ora_partita", "___")} - ORA RITROVO: {ev.get("ora_convocazione", "___")}</td></tr>
-<tr><td style='border: 1px solid black; font-weight: bold; padding: 5px; background-color: #f9f9f9;'>LUOGO: {ind_campo}</td></tr>
 </table>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black; border-top: none;'>
 <tr style='font-weight: bold; background-color: #f0f0f0;'>
@@ -381,14 +395,14 @@ elif menu == "🟢 Calendario e Convocazioni":
                             resoconto_gol = {}
                             
                             for c in convocati_list:
-                                col_tit, col_num, col_min, col_g = st.columns([2.5, 1, 1, 1])
-                                with col_tit:
-                                    is_tit = st.checkbox(f"Titolare: {c}", value=(c in titolari_salvati), key=f"tit_{c}_{ev['id']}")
-                                    if is_tit: nuovi_titolari.append(c)
+                                col_num, col_tit, col_min, col_g = st.columns([1, 2.5, 1, 1])
                                 with col_num:
                                     num_prec = numeri_salvati.get(c, "")
                                     num = st.text_input("N°", value=num_prec, key=f"num_{c}_{ev['id']}", label_visibility="collapsed", placeholder="N°")
                                     nuovi_numeri[c] = num
+                                with col_tit:
+                                    is_tit = st.checkbox(f"Titolare: {c}", value=(c in titolari_salvati), key=f"tit_{c}_{ev['id']}")
+                                    if is_tit: nuovi_titolari.append(c)
                                 with col_min:
                                     min_prec = minutaggio_evento.get(c, 0)
                                     minuti = st.number_input("Min", min_value=0, max_value=150, value=min_prec, step=1, label_visibility="collapsed", key=f"m_{c}_{ev['id']}", help="Minuti giocati")
@@ -699,7 +713,6 @@ elif menu == "📈 Statistiche Squadra":
         
         if tot_partite > 0:
             html_squadra = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Squadra</h2>{riepilogo_html}<h2>Dettaglio Partite</h2>{tabella_html}</body></html>"
-            # Pulizia colori per renderli chiari in un file HTML separato
             html_squadra = html_squadra.replace('var(--text-color)', 'black').replace('rgba(128,128,128,0.2)', '#f0f0f0').replace('rgba(128,128,128,0.3)', 'black')
             
             st.download_button(
@@ -721,38 +734,78 @@ elif menu == "🏃 Gestione Rosa":
     else:
         for i, ragazzo in enumerate(list(st.session_state.db["ragazzi"])):
             if st.session_state.edit_mode == i:
-                col_input, col_salva, col_annulla = st.columns([2, 1, 1])
-                with col_input:
-                    nuovo_nome_mod = st.text_input("Nuovo nome", value=ragazzo, key=f"edit_input_{i}", label_visibility="collapsed")
-                with col_salva:
-                    if st.button("💾 Salva", key=f"save_btn_{i}", type="primary"):
-                        nuovo_nome_mod = nuovo_nome_mod.strip()
-                        if nuovo_nome_mod and nuovo_nome_mod != ragazzo and nuovo_nome_mod not in st.session_state.db["ragazzi"]:
-                            st.session_state.db["ragazzi"][i] = nuovo_nome_mod
-                            for ev_id, appello in st.session_state.db["storico_presenze"].items():
-                                if ragazzo in appello: appello[nuovo_nome_mod] = appello.pop(ragazzo)
-                            for ev_id, min_dict in st.session_state.db["storico_minutaggio"].items():
-                                if ragazzo in min_dict: min_dict[nuovo_nome_mod] = min_dict.pop(ragazzo)
-                            for ev_id, titolari_list in st.session_state.db["storico_titolari"].items():
-                                if ragazzo in titolari_list: 
-                                    titolari_list.remove(ragazzo)
-                                    titolari_list.append(nuovo_nome_mod)
-                            for ev_id, numeri_dict in st.session_state.db["storico_numeri"].items():
-                                if ragazzo in numeri_dict: numeri_dict[nuovo_nome_mod] = numeri_dict.pop(ragazzo)
-                            for ev_id, gol_dict in st.session_state.db["storico_gol"].items():
-                                if ragazzo in gol_dict: gol_dict[nuovo_nome_mod] = gol_dict.pop(ragazzo)
-                        st.session_state.edit_mode = None
-                        salvare_dati()
-                        st.rerun()
-                with col_annulla:
-                    if st.button("❌ Annulla", key=f"cancel_btn_{i}"):
-                        st.session_state.edit_mode = None
-                        st.rerun()
+                with st.container():
+                    st.markdown(f"**✏️ Modifica: {ragazzo}**")
+                    col_n, col_r, col_d = st.columns(3)
+                    with col_n: 
+                        nuovo_nome_mod = st.text_input("Nome", value=ragazzo, key=f"edit_input_{i}")
+                    
+                    ruolo_prec = st.session_state.db.get("anagrafica_ruolo", {}).get(ragazzo, "Non definito")
+                    ruoli_disp = ["Portiere", "Difensore", "Centrocampista", "Attaccante", "Non definito"]
+                    idx_r = ruoli_disp.index(ruolo_prec) if ruolo_prec in ruoli_disp else 4
+                    with col_r: 
+                        nuovo_ruolo_mod = st.selectbox("Ruolo", ruoli_disp, index=idx_r, key=f"edit_r_{i}")
+                    
+                    nascita_prec = st.session_state.db.get("anagrafica_nascita", {}).get(ragazzo, "")
+                    if nascita_prec:
+                        try: d_obj = datetime.datetime.strptime(nascita_prec, "%Y-%m-%d").date()
+                        except: d_obj = datetime.date(2014, 1, 1)
+                    else:
+                        d_obj = datetime.date(2014, 1, 1)
+                    with col_d: 
+                        nuova_nascita_mod = st.date_input("Nascita", d_obj, key=f"edit_d_{i}")
+                    
+                    col_s, col_a = st.columns(2)
+                    with col_s:
+                        if st.button("💾 Salva Modifiche", key=f"save_btn_{i}", type="primary"):
+                            nuovo_nome_mod = nuovo_nome_mod.strip()
+                            nome_finale = ragazzo
+                            if nuovo_nome_mod and nuovo_nome_mod != ragazzo and nuovo_nome_mod not in st.session_state.db["ragazzi"]:
+                                st.session_state.db["ragazzi"][i] = nuovo_nome_mod
+                                nome_finale = nuovo_nome_mod
+                                for ev_id, appello in st.session_state.db["storico_presenze"].items():
+                                    if ragazzo in appello: appello[nuovo_nome_mod] = appello.pop(ragazzo)
+                                for ev_id, min_dict in st.session_state.db["storico_minutaggio"].items():
+                                    if ragazzo in min_dict: min_dict[nuovo_nome_mod] = min_dict.pop(ragazzo)
+                                for ev_id, titolari_list in st.session_state.db["storico_titolari"].items():
+                                    if ragazzo in titolari_list: 
+                                        titolari_list.remove(ragazzo)
+                                        titolari_list.append(nuovo_nome_mod)
+                                for ev_id, numeri_dict in st.session_state.db["storico_numeri"].items():
+                                    if ragazzo in numeri_dict: numeri_dict[nuovo_nome_mod] = numeri_dict.pop(ragazzo)
+                                for ev_id, gol_dict in st.session_state.db["storico_gol"].items():
+                                    if ragazzo in gol_dict: gol_dict[nuovo_nome_mod] = gol_dict.pop(ragazzo)
+                                
+                                # Anagrafica update keys se presenti
+                                if ragazzo in st.session_state.db.get("anagrafica_ruolo", {}):
+                                    st.session_state.db["anagrafica_ruolo"].pop(ragazzo)
+                                if ragazzo in st.session_state.db.get("anagrafica_nascita", {}):
+                                    st.session_state.db["anagrafica_nascita"].pop(ragazzo)
+                            
+                            st.session_state.db.setdefault("anagrafica_ruolo", {})[nome_finale] = nuovo_ruolo_mod
+                            st.session_state.db.setdefault("anagrafica_nascita", {})[nome_finale] = str(nuova_nascita_mod)
+                            
+                            st.session_state.edit_mode = None
+                            salvare_dati()
+                            st.rerun()
+                    with col_a:
+                        if st.button("❌ Annulla", key=f"cancel_btn_{i}"):
+                            st.session_state.edit_mode = None
+                            st.rerun()
+                st.write("---")
             else:
                 col_nome, col_modifica, col_cancella = st.columns([2.5, 1, 1])
                 with col_nome: 
                     min_tot_anagrafica = sum(st.session_state.db["storico_minutaggio"].get(ev_id, {}).get(ragazzo, 0) for ev_id in st.session_state.db["storico_minutaggio"])
-                    st.write(f"• **{ragazzo}** *(⏱️ {min_tot_anagrafica}' totali)*")
+                    ruolo_val = st.session_state.db.get("anagrafica_ruolo", {}).get(ragazzo, "")
+                    nascita_val = st.session_state.db.get("anagrafica_nascita", {}).get(ragazzo, "")
+                    
+                    extra_info = []
+                    if ruolo_val and ruolo_val != "Non definito": extra_info.append(ruolo_val)
+                    if nascita_val: extra_info.append(f"🎂 {nascita_val}")
+                    extra_str = f" ({' - '.join(extra_info)})" if extra_info else ""
+                    
+                    st.write(f"• **{ragazzo}**{extra_str} *(⏱️ {min_tot_anagrafica}' totali)*")
                 with col_modifica:
                     if st.button("✏️ Modifica", key=f"edit_btn_{i}"):
                         st.session_state.edit_mode = i
@@ -760,15 +813,23 @@ elif menu == "🏃 Gestione Rosa":
                 with col_cancella:
                     if st.button("🗑️ Elimina", key=f"del_btn_{i}"):
                         st.session_state.db["ragazzi"].remove(ragazzo)
+                        if ragazzo in st.session_state.db.get("anagrafica_ruolo", {}): del st.session_state.db["anagrafica_ruolo"][ragazzo]
+                        if ragazzo in st.session_state.db.get("anagrafica_nascita", {}): del st.session_state.db["anagrafica_nascita"][ragazzo]
                         salvare_dati()
                         st.rerun()
                     
     st.write("---")
     st.subheader("➕ Aggiungi un nuovo giocatore")
-    nuovo_nome_ins = st.text_input("Nome e Cognome del ragazzo:", key="nuovo_ins_input")
+    col_n, col_r, col_d = st.columns(3)
+    with col_n: nuovo_nome_ins = st.text_input("Nome e Cognome:", key="nuovo_ins_input")
+    with col_r: nuovo_ruolo_ins = st.selectbox("Ruolo", ["Portiere", "Difensore", "Centrocampista", "Attaccante", "Non definito"])
+    with col_d: nuova_nascita_ins = st.date_input("Data di Nascita", datetime.date(2014, 1, 1))
+    
     if st.button("Inserisci in Squadra"):
         if nuovo_nome_ins.strip() != "" and nuovo_nome_ins.strip() not in st.session_state.db["ragazzi"]:
             st.session_state.db["ragazzi"].append(nuovo_nome_ins.strip())
+            st.session_state.db.setdefault("anagrafica_ruolo", {})[nuovo_nome_ins.strip()] = nuovo_ruolo_ins
+            st.session_state.db.setdefault("anagrafica_nascita", {})[nuovo_nome_ins.strip()] = str(nuova_nascita_ins)
             salvare_dati()
             st.success(f"⚽ {nuovo_nome_ins.strip()} aggiunto alla rosa!")
             st.rerun()
