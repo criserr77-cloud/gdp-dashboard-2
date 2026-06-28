@@ -40,7 +40,7 @@ def caricare_dati():
         "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
         "eventi": [
             {"id": "1", "data": "2026-06-23", "tipo": "Allenamento", "nota": "Campo Principale - ore 17:30"},
-            {"id": "2", "data": "2026-06-27", "tipo": "Partita", "avversario": "Real City", "luogo": "Trasferta", "ora_partita": "15:00", "ora_convocazione": "14:00", "indirizzo": "Via Stadio 5, Torino", "nota": "Campionato"}
+            {"id": "2", "data": "2026-06-27", "tipo": "Partita", "avversario": "Real City", "luogo": "Trasferta", "ora_partita": "15:00", "ora_convocazione": "14:00", "indirizzo": "Via Stadio 5, Torino", "nota": "Campionato", "note_aggiuntive": ""}
         ],
         "storico_presenze": {},
         "storico_minutaggio": {},
@@ -250,6 +250,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     valore_attuale_nota = ev.get("nota", "Campionato")
                     indice_nota = opzioni_tipo_partita.index(valore_attuale_nota) if valore_attuale_nota in opzioni_tipo_partita else 0
                     mod_nota = st.selectbox("Tipo Partita", opzioni_tipo_partita, index=indice_nota, key=f"mod_np_{ev['id']}")
+                    mod_note_agg = st.text_input("Note aggiuntive", value=ev.get("note_aggiuntive", ""), key=f"mod_na_{ev['id']}")
                 
                 col_s, col_a = st.columns(2)
                 with col_s:
@@ -261,6 +262,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                         ev["ora_partita"] = mod_orap
                         ev["ora_convocazione"] = mod_orac
                         ev["nota"] = mod_nota
+                        ev["note_aggiuntive"] = mod_note_agg
                         st.session_state.edit_evento = None
                         salvare_dati()
                         st.rerun()
@@ -288,6 +290,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             if ev["id"] in st.session_state.db["storico_presenze"]: del st.session_state.db["storico_presenze"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_minutaggio"]: del st.session_state.db["storico_minutaggio"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_titolari"]: del st.session_state.db["storico_titolari"][ev["id"]]
+                            if ev["id"] in st.session_state.db["storico_moduli"]: del st.session_state.db["storico_moduli"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_numeri"]: del st.session_state.db["storico_numeri"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_gol"]: del st.session_state.db["storico_gol"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_risultati"]: del st.session_state.db["storico_risultati"][ev["id"]]
@@ -301,10 +304,12 @@ elif menu == "🟢 Calendario e Convocazioni":
                     gol_evento = st.session_state.db["storico_gol"].get(ev["id"], {})
                     ris_evento = st.session_state.db["storico_risultati"].get(ev["id"], {})
                     titolari_evento = st.session_state.db["storico_titolari"].get(ev["id"], [])
+                    modulo_evento = st.session_state.db["storico_moduli"].get(ev["id"], "")
                     numeri_evento = st.session_state.db["storico_numeri"].get(ev["id"], {})
                     
                     ind_campo = ev.get("indirizzo", "Campo di Casa") if ev.get("luogo", "Casa") == "Trasferta" else "Campo di Casa"
                     tipo_partita = ev.get("nota", "Campionato")
+                    note_agg = ev.get("note_aggiuntive", "")
                     
                     righe_giocatori = ""
                     convocati_list = []
@@ -324,30 +329,19 @@ elif menu == "🟢 Calendario e Convocazioni":
                         righe_giocatori += f"<tr><td style='border: 1px solid black; padding: 5px;'>{riga_num}</td><td style='border: 1px solid black; padding: 5px; text-align: left;'>{ragazzo}</td><td style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
                         riga_num += 1
                     
-                    sezione_formazione = ""
+                    # Formazione senza sezione nera
+                    lista_titolari_html = ""
                     if titolari_evento:
                         titolari_validi = [t for t in titolari_evento if t in convocati_list]
-                        lista_titolari_html = ""
-                        
-                        if titolari_validi:
-                            for t in titolari_validi:
-                                num = numeri_evento.get(t, '-')
-                                lista_titolari_html += f"<div style='margin-bottom: 6px; font-size: 16px;'><span style='display: inline-block; width: 35px; padding: 2px 0; text-align: center; border: 2px solid black; background-color: #f0f0f0; margin-right: 15px; font-weight: bold;'>{num}</span> {t}</div>"
-                        else:
-                            lista_titolari_html = "<div style='font-style: italic;'>Nessun titolare selezionato</div>"
-                        
-                        sezione_formazione = f"""<table style='width: 100%; border-collapse: collapse; text-align: left; border: 2px solid black; border-top: none; background-color: white;'>
-<tr>
-<td style='padding: 15px; vertical-align: top; color: black;'>
-<div style='font-weight: bold; font-size: 18px; margin-bottom: 15px; text-align: center; border-bottom: 1px solid #ccc; padding-bottom: 5px;'>FORMAZIONE INIZIALE</div>
-{lista_titolari_html}
-</td>
-</tr>
-</table>"""
+                        for t in titolari_validi:
+                            num = numeri_evento.get(t, '-')
+                            lista_titolari_html += f"<div style='margin-bottom: 6px; font-size: 16px;'><span style='display: inline-block; width: 35px; padding: 2px 0; text-align: center; border: 2px solid black; background-color: #f0f0f0; margin-right: 15px; font-weight: bold;'>{num}</span> {t}</div>"
+                    else:
+                        lista_titolari_html = "<div style='font-style: italic;'>Nessun titolare selezionato</div>"
                     
                     logo_immagine = get_logo_html()
                     
-                    # HTML per le sole CONVOCAZIONI
+                    # HTML Convocazioni
                     html_distinta = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
 <tr>
@@ -371,7 +365,7 @@ elif menu == "🟢 Calendario e Convocazioni":
 </table>
 </div>"""
 
-                    # HTML separato per la FORMAZIONE 
+                    # HTML Formazione (senza la parte nera)
                     html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
 <tr>
@@ -383,7 +377,10 @@ elif menu == "🟢 Calendario e Convocazioni":
 <tr><td style='border: 1px solid black; padding: 5px;'>DATA: {data_f}</td></tr>
 <tr><td style='border: 1px solid black; font-weight: bold; padding: 5px; background-color: #f9f9f9;'>LUOGO: {ind_campo}</td></tr>
 </table>
-{sezione_formazione}
+<div style='border: 2px solid black; border-top: none; padding: 20px;'>
+<div style='font-weight: bold; font-size: 18px; margin-bottom: 15px; text-align: center; border-bottom: 1px solid #ccc; padding-bottom: 5px;'>FORMAZIONE INIZIALE</div>
+{lista_titolari_html}
+</div>
 </div>"""
                     
                     whatsapp_text = f"Ciao a tutti,\n\n"
@@ -394,6 +391,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     whatsapp_text += f"⏰ *Ora Partita:* {ev.get('ora_partita', '___')}\n"
                     whatsapp_text += f"📍 *Ora Ritrovo:* {ev.get('ora_convocazione', '___')}\n"
                     whatsapp_text += f"🏟️ *Luogo:* {ind_campo}\n"
+                    if note_agg: whatsapp_text += f"📝 *Note:* {note_agg}\n"
                         
                     whatsapp_text += f"\n*ELENCO CONVOCATI:*\n"
                     if convocati_list:
@@ -401,7 +399,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             whatsapp_text += f"✅ {c}\n"
                     else:
                         whatsapp_text += "*(Nessun convocato ancora selezionato)*\n"
-                    whatsapp_text += "\n*Forza USO UNITED!* 💚💙"
+                    whatsapp_text += "\n*Forza USO UNITED!* 💙💚"
 
                     tab1, tab_formazione, tab2, tab3 = st.tabs(["⚙️ Compila Elenco", "⚽ Formazione", "📄 Convocazioni Ufficiali", "📱 Messaggio WhatsApp"])
                     
@@ -497,7 +495,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 st.rerun()
 
                             st.write("---")
-                            # Mostriamo qui l'HTML per scaricare la formazione appena creata
                             st.markdown(html_formazione, unsafe_allow_html=True)
                             st.write("")
                             st.download_button(
@@ -539,6 +536,7 @@ elif menu == "🟢 Calendario e Convocazioni":
         nuova_orap = st.text_input("Ora Partita (es. 15:00)", key="new_orap")
         nuova_orac = st.text_input("Ora Convocazione (es. 14:00)", key="new_orac")
         nuova_nota = st.selectbox("Tipo Partita", ["Campionato", "Amichevole", "Coppa Brescia"], key="new_notap")
+        nuova_nota_agg = st.text_input("Note aggiuntive", key="new_nota_agg")
         
     if st.button("Aggiungi Partita a Calendario"):
         if nuovo_avversario.strip() == "":
@@ -549,7 +547,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                 "id": nuovo_id, "data": str(nuova_data), "tipo": "Partita", 
                 "avversario": nuovo_avversario, "luogo": nuovo_luogo, 
                 "ora_partita": nuova_orap, "ora_convocazione": nuova_orac, 
-                "indirizzo": nuovo_indirizzo, "nota": nuova_nota
+                "indirizzo": nuovo_indirizzo, "nota": nuova_nota, "note_aggiuntive": nuova_nota_agg
             })
             salvare_dati()
             st.rerun()
