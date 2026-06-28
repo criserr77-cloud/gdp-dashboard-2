@@ -305,6 +305,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     
                     righe_giocatori = ""
                     convocati_list = []
+                    riga_num = 1
                     
                     for idx, ragazzo in enumerate(st.session_state.db["ragazzi"]):
                         stato = appello_evento.get(ragazzo, "🟢 Convocato")
@@ -314,34 +315,11 @@ elif menu == "🟢 Calendario e Convocazioni":
                         c_mark = "X" if is_convocato else ""
                         nc_mark = "X" if not is_convocato else ""
                         
-                        numero_maglia = numeri_evento.get(ragazzo, "")
-                        numero_display = numero_maglia if numero_maglia else "-"
-                        
                         if is_convocato:
                             convocati_list.append(ragazzo)
                             
-                        righe_giocatori += f"<tr><td style='border: 1px solid black; padding: 5px;'>{numero_display}</td><td style='border: 1px solid black; padding: 5px; text-align: left;'>{ragazzo}</td><td style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
-                    
-                    sezione_formazione = ""
-                    if modulo_evento or titolari_evento:
-                        titolari_validi = [t for t in titolari_evento if t in convocati_list]
-                        lista_titolari_html = "<br>".join([f"[{numeri_evento.get(t, '-')}] {t}" for t in titolari_validi]) if titolari_validi else "Nessun titolare selezionato"
-                        modulo_txt = modulo_evento if modulo_evento else "Da definire"
-                        
-                        sezione_formazione = f"""
-                        <table style='width: 100%; border-collapse: collapse; text-align: left; border: 2px solid black; border-top: none; background-color: #f9f9f9;'>
-                        <tr>
-                            <td style='border: 1px solid black; padding: 10px; font-weight: bold; width: 40%; vertical-align: top;'>
-                                MODULO TATTICO:<br>
-                                <span style='font-size: 24px; color: #1E88E5;'>{modulo_txt}</span>
-                            </td>
-                            <td style='border: 1px solid black; padding: 10px; vertical-align: top;'>
-                                <span style='font-weight: bold;'>FORMAZIONE INIZIALE:</span><br>
-                                {lista_titolari_html}
-                            </td>
-                        </tr>
-                        </table>
-                        """
+                        righe_giocatori += f"<tr><td style='border: 1px solid black; padding: 5px;'>{riga_num}</td><td style='border: 1px solid black; padding: 5px; text-align: left;'>{ragazzo}</td><td style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
+                        riga_num += 1
                     
                     logo_immagine = get_logo_html()
                     
@@ -351,7 +329,7 @@ elif menu == "🟢 Calendario e Convocazioni":
 <td rowspan='7' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
 <td style='border: 1px solid black; color: #4CAF50; font-weight: bold; font-size: 20px; padding: 5px;'>USO UNITED 2014</td>
 </tr>
-<tr><td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px;'>MODULO DI GARA UFFICIALE</td></tr>
+<tr><td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px;'>CONVOCAZIONI</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>DATA: {data_f}</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>ORA PARTITA: {ev.get("ora_partita", "___")}</td></tr>
@@ -367,7 +345,6 @@ elif menu == "🟢 Calendario e Convocazioni":
 </tr>
 {righe_giocatori}
 </table>
-{sezione_formazione}
 </div>"""
                     
                     whatsapp_text = f"Ciao a tutti,\n\n"
@@ -390,7 +367,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                         whatsapp_text += "*(Nessun convocato ancora selezionato)*\n"
                     whatsapp_text += "\n*Forza USO UNITED!* 💚💙"
 
-                    tab1, tab_formazione, tab2, tab3 = st.tabs(["⚙️ Compila Elenco", "⚽ Formazione", "📄 Modulo Ufficiale", "📱 Messaggio WhatsApp"])
+                    tab1, tab_formazione, tab2, tab3 = st.tabs(["⚙️ Compila Elenco", "⚽ Formazione", "📄 Convocazioni Ufficiali", "📱 Messaggio WhatsApp"])
                     
                     with tab1:
                         if not st.session_state.db["ragazzi"]:
@@ -485,16 +462,16 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 st.session_state.db["storico_moduli"][ev["id"]] = nuovo_modulo
                                 st.session_state.db["storico_numeri"][ev["id"]] = nuovi_numeri
                                 salvare_dati()
-                                st.success("Formazione, Modulo e Numeri di maglia salvati! Visualizzali nella scheda 'Modulo Ufficiale'.")
+                                st.success("Formazione salvata con successo!")
                                 st.rerun()
 
                     with tab2:
                         st.markdown(html_distinta, unsafe_allow_html=True)
                         st.write("")
                         st.download_button(
-                            label="⬇️ Scarica File del Modulo (.html)",
+                            label="⬇️ Scarica Convocazioni (.html)",
                             data=html_distinta,
-                            file_name=f"Distinta_{sq_casa}_{sq_trasf}.html",
+                            file_name=f"Convocazioni_{sq_casa}_{sq_trasf}.html",
                             mime="text/html",
                             key=f"dl_html_{ev['id']}"
                         )
@@ -569,6 +546,19 @@ elif menu == "📊 Statistiche Allenamenti":
                 "📈 % Presenza": f"{pct:.2f}%"
             })
         st.table(tabella_all)
+        
+        if tabella_all:
+            html_all = "<html><head><meta charset='UTF-8'></head><body style='font-family: sans-serif;'><h2>Statistiche Allenamenti</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px;'>Giocatore</th><th style='padding:8px;'>🟢 Presenze</th><th style='padding:8px;'>🔴 Assenze</th><th style='padding:8px;'>🟡 Infortuni</th><th style='padding:8px;'>📈 % Presenza</th></tr>"
+            for row in tabella_all:
+                html_all += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Presenze']}</td><td style='padding:8px;'>{row['🔴 Assenze']}</td><td style='padding:8px;'>{row['🟡 Infortuni']}</td><td style='padding:8px;'>{row['📈 % Presenza']}</td></tr>"
+            html_all += "</table></body></html>"
+            
+            st.download_button(
+                label="⬇️ Scarica Statistiche Allenamenti (.html)",
+                data=html_all,
+                file_name="Statistiche_Allenamenti.html",
+                mime="text/html"
+            )
 
 # ==========================================
 # SCHERMATA 4: STATISTICHE GIOCATORI
@@ -616,6 +606,19 @@ elif menu == "🏆 Statistiche Giocatori":
                 "⚽ Gol Fatti": gol_tot
             })
         st.table(tabella_gare)
+        
+        if tabella_gare:
+            html_giocatori = "<html><head><meta charset='UTF-8'></head><body style='font-family: sans-serif;'><h2>Statistiche Giocatori</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px;'>Giocatore</th><th style='padding:8px;'>🟢 Convocati</th><th style='padding:8px;'>👕 Titolare</th><th style='padding:8px;'>🔴 Non Conv.</th><th style='padding:8px;'>📈 % Conv.</th><th style='padding:8px;'>⏱️ Min.</th><th style='padding:8px;'>⚽ Gol Fatti</th></tr>"
+            for row in tabella_gare:
+                html_giocatori += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Convocati']}</td><td style='padding:8px;'>{row['👕 Titolare']}</td><td style='padding:8px;'>{row['🔴 Non Conv.']}</td><td style='padding:8px;'>{row['📈 % Conv.']}</td><td style='padding:8px;'>{row['⏱️ Min.']}</td><td style='padding:8px;'>{row['⚽ Gol Fatti']}</td></tr>"
+            html_giocatori += "</table></body></html>"
+            
+            st.download_button(
+                label="⬇️ Scarica Statistiche Giocatori (.html)",
+                data=html_giocatori,
+                file_name="Statistiche_Giocatori.html",
+                mime="text/html"
+            )
 
 # ==========================================
 # SCHERMATA 5: STATISTICHE SQUADRA
@@ -741,6 +744,18 @@ elif menu == "📈 Statistiche Squadra":
         </table>
         """
         st.markdown(tabella_html, unsafe_allow_html=True)
+        
+        if tot_partite > 0:
+            html_squadra = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Squadra</h2>{riepilogo_html}<h2>Dettaglio Partite</h2>{tabella_html}</body></html>"
+            # Pulizia colori per renderli chiari in un file HTML separato
+            html_squadra = html_squadra.replace('var(--text-color)', 'black').replace('rgba(128,128,128,0.2)', '#f0f0f0').replace('rgba(128,128,128,0.3)', 'black')
+            
+            st.download_button(
+                label="⬇️ Scarica Statistiche Squadra (.html)",
+                data=html_squadra,
+                file_name="Statistiche_Squadra.html",
+                mime="text/html"
+            )
 
 # ==========================================
 # SCHERMATA 6: GESTIONE ROSA
