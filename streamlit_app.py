@@ -321,20 +321,39 @@ elif menu == "🟢 Calendario e Convocazioni":
                         righe_giocatori += f"<tr><td style='border: 1px solid black; padding: 5px;'>{riga_num}</td><td style='border: 1px solid black; padding: 5px; text-align: left;'>{ragazzo}</td><td style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
                         riga_num += 1
                     
+                    sezione_formazione = ""
+                    if modulo_evento or titolari_evento:
+                        titolari_validi = [t for t in titolari_evento if t in convocati_list]
+                        lista_titolari_html = "<br>".join([f"[{numeri_evento.get(t, '-')}] {t}" for t in titolari_validi]) if titolari_validi else "Nessun titolare selezionato"
+                        modulo_txt = modulo_evento if modulo_evento else "Da definire"
+                        
+                        sezione_formazione = f"""<table style='width: 100%; border-collapse: collapse; text-align: left; border: 2px solid black; border-top: none; background-color: #f9f9f9;'>
+<tr>
+<td style='border: 1px solid black; padding: 10px; font-weight: bold; width: 40%; vertical-align: top; color: black;'>
+MODULO TATTICO:<br>
+<span style='font-size: 24px; color: #1E88E5;'>{modulo_txt}</span>
+</td>
+<td style='border: 1px solid black; padding: 10px; vertical-align: top; color: black;'>
+<span style='font-weight: bold;'>FORMAZIONE INIZIALE:</span><br>
+{lista_titolari_html}
+</td>
+</tr>
+</table>"""
+                    
                     logo_immagine = get_logo_html()
                     
+                    # HTML per le sole CONVOCAZIONI
                     html_distinta = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
 <tr>
-<td rowspan='7' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
-<td style='border: 1px solid black; color: #4CAF50; font-weight: bold; font-size: 20px; padding: 5px;'>USO UNITED 2014</td>
+<td rowspan='5' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
+<td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px;'>CONVOCAZIONI</td>
 </tr>
-<tr><td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px;'>CONVOCAZIONI</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>DATA: {data_f}</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>ORA PARTITA: {ev.get("ora_partita", "___")}</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>ORA RITROVO: {ev.get("ora_convocazione", "___")}</td></tr>
-<tr><td style='border: 1px solid black; font-weight: bold; padding: 5px;'>LUOGO: {ind_campo}</td></tr>
+<tr><td colspan='2' style='border: 1px solid black; font-weight: bold; padding: 5px;'>LUOGO: {ind_campo}</td></tr>
 </table>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black; border-top: none;'>
 <tr style='font-weight: bold; background-color: #f0f0f0;'>
@@ -345,6 +364,20 @@ elif menu == "🟢 Calendario e Convocazioni":
 </tr>
 {righe_giocatori}
 </table>
+</div>"""
+
+                    # HTML separato per la FORMAZIONE 
+                    html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
+<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
+<tr>
+<td rowspan='4' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
+<td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px;'>FORMAZIONE UFFICIALE</td>
+</tr>
+<tr><td style='border: 1px solid black; padding: 5px;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
+<tr><td style='border: 1px solid black; padding: 5px;'>DATA: {data_f}</td></tr>
+<tr><td style='border: 1px solid black; font-weight: bold; padding: 5px;'>LUOGO: {ind_campo}</td></tr>
+</table>
+{sezione_formazione}
 </div>"""
                     
                     whatsapp_text = f"Ciao a tutti,\n\n"
@@ -465,6 +498,18 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 st.success("Formazione salvata con successo!")
                                 st.rerun()
 
+                            st.write("---")
+                            # Mostriamo qui l'HTML per scaricare la formazione appena creata
+                            st.markdown(html_formazione, unsafe_allow_html=True)
+                            st.write("")
+                            st.download_button(
+                                label="⬇️ Scarica Modulo Formazione (.html)",
+                                data=html_formazione,
+                                file_name=f"Formazione_{sq_casa}_{sq_trasf}.html",
+                                mime="text/html",
+                                key=f"dl_html_form_{ev['id']}"
+                            )
+
                     with tab2:
                         st.markdown(html_distinta, unsafe_allow_html=True)
                         st.write("")
@@ -473,7 +518,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             data=html_distinta,
                             file_name=f"Convocazioni_{sq_casa}_{sq_trasf}.html",
                             mime="text/html",
-                            key=f"dl_html_{ev['id']}"
+                            key=f"dl_html_conv_{ev['id']}"
                         )
 
                     with tab3:
@@ -548,7 +593,7 @@ elif menu == "📊 Statistiche Allenamenti":
         st.table(tabella_all)
         
         if tabella_all:
-            html_all = "<html><head><meta charset='UTF-8'></head><body style='font-family: sans-serif;'><h2>Statistiche Allenamenti</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px;'>Giocatore</th><th style='padding:8px;'>🟢 Presenze</th><th style='padding:8px;'>🔴 Assenze</th><th style='padding:8px;'>🟡 Infortuni</th><th style='padding:8px;'>📈 % Presenza</th></tr>"
+            html_all = "<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Allenamenti</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px;'>Giocatore</th><th style='padding:8px;'>🟢 Presenze</th><th style='padding:8px;'>🔴 Assenze</th><th style='padding:8px;'>🟡 Infortuni</th><th style='padding:8px;'>📈 % Presenza</th></tr>"
             for row in tabella_all:
                 html_all += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Presenze']}</td><td style='padding:8px;'>{row['🔴 Assenze']}</td><td style='padding:8px;'>{row['🟡 Infortuni']}</td><td style='padding:8px;'>{row['📈 % Presenza']}</td></tr>"
             html_all += "</table></body></html>"
@@ -598,9 +643,9 @@ elif menu == "🏆 Statistiche Giocatori":
 
             tabella_gare.append({
                 "Giocatore": ragazzo,
-                "🟢 Convocati": convocati,
-                "👕 Titolare": presenze_titolare,
+                "🟢 Convocato": convocati,
                 "🔴 Non Conv.": non_convocati,
+                "👕 Titolare": presenze_titolare,
                 "📈 % Conv.": f"{pct_conv:.2f}%",
                 "⏱️ Min.": min_tot,
                 "⚽ Gol Fatti": gol_tot
@@ -608,9 +653,9 @@ elif menu == "🏆 Statistiche Giocatori":
         st.table(tabella_gare)
         
         if tabella_gare:
-            html_giocatori = "<html><head><meta charset='UTF-8'></head><body style='font-family: sans-serif;'><h2>Statistiche Giocatori</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px;'>Giocatore</th><th style='padding:8px;'>🟢 Convocati</th><th style='padding:8px;'>👕 Titolare</th><th style='padding:8px;'>🔴 Non Conv.</th><th style='padding:8px;'>📈 % Conv.</th><th style='padding:8px;'>⏱️ Min.</th><th style='padding:8px;'>⚽ Gol Fatti</th></tr>"
+            html_giocatori = "<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Giocatori</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px;'>Giocatore</th><th style='padding:8px;'>🟢 Convocato</th><th style='padding:8px;'>🔴 Non Conv.</th><th style='padding:8px;'>👕 Titolare</th><th style='padding:8px;'>📈 % Conv.</th><th style='padding:8px;'>⏱️ Min.</th><th style='padding:8px;'>⚽ Gol Fatti</th></tr>"
             for row in tabella_gare:
-                html_giocatori += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Convocati']}</td><td style='padding:8px;'>{row['👕 Titolare']}</td><td style='padding:8px;'>{row['🔴 Non Conv.']}</td><td style='padding:8px;'>{row['📈 % Conv.']}</td><td style='padding:8px;'>{row['⏱️ Min.']}</td><td style='padding:8px;'>{row['⚽ Gol Fatti']}</td></tr>"
+                html_giocatori += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Convocato']}</td><td style='padding:8px;'>{row['🔴 Non Conv.']}</td><td style='padding:8px;'>{row['👕 Titolare']}</td><td style='padding:8px;'>{row['📈 % Conv.']}</td><td style='padding:8px;'>{row['⏱️ Min.']}</td><td style='padding:8px;'>{row['⚽ Gol Fatti']}</td></tr>"
             html_giocatori += "</table></body></html>"
             
             st.download_button(
@@ -703,26 +748,24 @@ elif menu == "📈 Statistiche Squadra":
             
             righe_partite += f"<tr><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{data_f}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{stringa_partita}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t1 if t1 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t2 if t2 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t3 if t3 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px; font-weight: bold;'>{esito_tabella}</td></tr>"
 
-    riepilogo_html = f"""
-    <table style="width: 100%; border-collapse: collapse; text-align: center; margin-bottom: 20px; color: var(--text-color);">
-        <tr style="background-color: rgba(128,128,128,0.2); font-weight: bold;">
-            <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Gare Giocate</td>
-            <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Vittorie</td>
-            <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Pareggi</td>
-            <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Sconfitte</td>
-            <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Gol Fatti</td>
-            <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Gol Subiti</td>
-        </tr>
-        <tr>
-            <td style="padding: 15px; font-size: 24px; font-weight: bold; border: 1px solid rgba(128,128,128,0.3);">{tot_partite}</td>
-            <td style="padding: 15px; font-size: 24px; font-weight: bold; color: #4CAF50; border: 1px solid rgba(128,128,128,0.3);">{vittorie}</td>
-            <td style="padding: 15px; font-size: 24px; font-weight: bold; color: #FF9800; border: 1px solid rgba(128,128,128,0.3);">{pareggi}</td>
-            <td style="padding: 15px; font-size: 24px; font-weight: bold; color: #F44336; border: 1px solid rgba(128,128,128,0.3);">{sconfitte}</td>
-            <td style="padding: 15px; font-size: 24px; font-weight: bold; color: #4CAF50; border: 1px solid rgba(128,128,128,0.3);">{tot_gf}</td>
-            <td style="padding: 15px; font-size: 24px; font-weight: bold; color: #F44336; border: 1px solid rgba(128,128,128,0.3);">{tot_gs}</td>
-        </tr>
-    </table>
-    """
+    riepilogo_html = f"""<table style="width: 100%; border-collapse: collapse; text-align: center; margin-bottom: 20px; color: var(--text-color);">
+<tr style="background-color: rgba(128,128,128,0.2); font-weight: bold;">
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Gare Giocate</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Vittorie</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Pareggi</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Sconfitte</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Gol Fatti</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Gol Subiti</td>
+</tr>
+<tr>
+<td style="padding: 15px; font-size: 24px; font-weight: bold; border: 1px solid rgba(128,128,128,0.3);">{tot_partite}</td>
+<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #4CAF50; border: 1px solid rgba(128,128,128,0.3);">{vittorie}</td>
+<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #FF9800; border: 1px solid rgba(128,128,128,0.3);">{pareggi}</td>
+<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #F44336; border: 1px solid rgba(128,128,128,0.3);">{sconfitte}</td>
+<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #4CAF50; border: 1px solid rgba(128,128,128,0.3);">{tot_gf}</td>
+<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #F44336; border: 1px solid rgba(128,128,128,0.3);">{tot_gs}</td>
+</tr>
+</table>"""
     st.markdown(riepilogo_html, unsafe_allow_html=True)
     
     st.write("---")
@@ -730,19 +773,17 @@ elif menu == "📈 Statistiche Squadra":
     if not righe_partite:
         st.info("Nessun risultato inserito nelle partite in calendario.")
     else:
-        tabella_html = f"""
-        <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; color: var(--text-color);">
-            <tr style="background-color: rgba(128,128,128,0.2); font-weight: bold;">
-                <td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">Data</td>
-                <td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">Partita</td>
-                <td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">1° T</td>
-                <td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">2° T</td>
-                <td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">3° T</td>
-                <td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3); color: #4CAF50;">Punti Tempi</td>
-            </tr>
-            {righe_partite}
-        </table>
-        """
+        tabella_html = f"""<table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; color: var(--text-color);">
+<tr style="background-color: rgba(128,128,128,0.2); font-weight: bold;">
+<td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">Data</td>
+<td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">Partita</td>
+<td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">1° T</td>
+<td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">2° T</td>
+<td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">3° T</td>
+<td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3); color: #4CAF50;">Punti Tempi</td>
+</tr>
+{righe_partite}
+</table>"""
         st.markdown(tabella_html, unsafe_allow_html=True)
         
         if tot_partite > 0:
