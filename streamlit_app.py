@@ -309,11 +309,9 @@ elif menu == "🟢 Calendario e Convocazioni":
                     for idx, ragazzo in enumerate(st.session_state.db["ragazzi"]):
                         stato = appello_evento.get(ragazzo, "🟢 Convocato")
                         is_convocato = "Convocato" in stato and "Non" not in stato
-                        is_titolare = is_convocato and (ragazzo in titolari_evento)
-                        is_panchina = is_convocato and not is_titolare
                         
-                        t_mark = "X" if is_titolare else ""
-                        p_mark = "X" if is_panchina else ""
+                        # Mostra le 'X' solo per Convocato / Non Convocato
+                        c_mark = "X" if is_convocato else ""
                         nc_mark = "X" if not is_convocato else ""
                         
                         numero_maglia = numeri_evento.get(ragazzo, "")
@@ -322,7 +320,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                         if is_convocato:
                             convocati_list.append(ragazzo)
                             
-                        righe_giocatori += f"<tr><td style='border: 1px solid black; padding: 5px;'>{numero_display}</td><td style='border: 1px solid black; padding: 5px; text-align: left;'>{ragazzo}</td><td style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{t_mark}</td><td style='border: 1px solid black; padding: 5px; color: orange; font-weight: bold;'>{p_mark}</td><td style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
+                        righe_giocatori += f"<tr><td style='border: 1px solid black; padding: 5px;'>{numero_display}</td><td style='border: 1px solid black; padding: 5px; text-align: left;'>{ragazzo}</td><td style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
                     
                     sezione_formazione = ""
                     if modulo_evento or titolari_evento:
@@ -350,22 +348,22 @@ elif menu == "🟢 Calendario e Convocazioni":
                     html_distinta = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
 <tr>
-<td rowspan='6' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
+<td rowspan='7' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
 <td style='border: 1px solid black; color: #4CAF50; font-weight: bold; font-size: 20px; padding: 5px;'>USO UNITED 2014</td>
 </tr>
 <tr><td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px;'>MODULO DI GARA UFFICIALE</td></tr>
-<tr><td style='border: 1px solid black; padding: 5px;'>PARTITA: {sq_casa}-{sq_trasf}</td></tr>
+<tr><td style='border: 1px solid black; padding: 5px;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>DATA: {data_f}</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>ORA PARTITA: {ev.get("ora_partita", "___")}</td></tr>
+<tr><td style='border: 1px solid black; padding: 5px;'>ORA RITROVO: {ev.get("ora_convocazione", "___")}</td></tr>
 <tr><td style='border: 1px solid black; font-weight: bold; padding: 5px;'>LUOGO: {ind_campo}</td></tr>
 </table>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black; border-top: none;'>
 <tr style='font-weight: bold; background-color: #f0f0f0;'>
 <td style='border: 1px solid black; padding: 5px; width: 10%;'>N°</td>
-<td style='border: 1px solid black; padding: 5px; width: 45%;'>Nome e Cognome</td>
-<td style='border: 1px solid black; padding: 5px; width: 15%;' title='Titolare'>T</td>
-<td style='border: 1px solid black; padding: 5px; width: 15%;' title='Panchina'>P</td>
-<td style='border: 1px solid black; padding: 5px; width: 15%;' title='Non Convocato'>NC</td>
+<td style='border: 1px solid black; padding: 5px; width: 50%;'>Nome e Cognome</td>
+<td style='border: 1px solid black; padding: 5px; width: 20%;' title='Convocato'>C</td>
+<td style='border: 1px solid black; padding: 5px; width: 20%;' title='Non Convocato'>NC</td>
 </tr>
 {righe_giocatori}
 </table>
