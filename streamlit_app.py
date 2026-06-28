@@ -223,6 +223,7 @@ elif menu == "🟢 Calendario e Convocazioni":
     
     st.subheader("Le tue Gare:")
     eventi_partita = [ev for ev in st.session_state.db["eventi"] if ev["tipo"] in ["Partita", "Torneo"]]
+    opzioni_tipo_partita = ["Campionato", "Amichevole", "Coppa Brescia"]
     
     if not eventi_partita:
         st.info("Nessuna partita in programma.")
@@ -245,7 +246,10 @@ elif menu == "🟢 Calendario e Convocazioni":
                 with col2:
                     mod_orap = st.text_input("Ora Partita (es. 15:00)", value=ev.get("ora_partita", ""), key=f"mod_op_{ev['id']}")
                     mod_orac = st.text_input("Ora Convocazione (es. 14:00)", value=ev.get("ora_convocazione", ""), key=f"mod_oc_{ev['id']}")
-                    mod_nota = st.text_input("Note (es. Campionato)", value=ev.get("nota", ""), key=f"mod_np_{ev['id']}")
+                    
+                    valore_attuale_nota = ev.get("nota", "Campionato")
+                    indice_nota = opzioni_tipo_partita.index(valore_attuale_nota) if valore_attuale_nota in opzioni_tipo_partita else 0
+                    mod_nota = st.selectbox("Tipo Partita", opzioni_tipo_partita, index=indice_nota, key=f"mod_np_{ev['id']}")
                 
                 col_s, col_a = st.columns(2)
                 with col_s:
@@ -284,7 +288,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                             if ev["id"] in st.session_state.db["storico_presenze"]: del st.session_state.db["storico_presenze"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_minutaggio"]: del st.session_state.db["storico_minutaggio"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_titolari"]: del st.session_state.db["storico_titolari"][ev["id"]]
-                            if ev["id"] in st.session_state.db["storico_moduli"]: del st.session_state.db["storico_moduli"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_numeri"]: del st.session_state.db["storico_numeri"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_gol"]: del st.session_state.db["storico_gol"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_risultati"]: del st.session_state.db["storico_risultati"][ev["id"]]
@@ -298,10 +301,10 @@ elif menu == "🟢 Calendario e Convocazioni":
                     gol_evento = st.session_state.db["storico_gol"].get(ev["id"], {})
                     ris_evento = st.session_state.db["storico_risultati"].get(ev["id"], {})
                     titolari_evento = st.session_state.db["storico_titolari"].get(ev["id"], [])
-                    modulo_evento = st.session_state.db["storico_moduli"].get(ev["id"], "")
                     numeri_evento = st.session_state.db["storico_numeri"].get(ev["id"], {})
                     
                     ind_campo = ev.get("indirizzo", "Campo di Casa") if ev.get("luogo", "Casa") == "Trasferta" else "Campo di Casa"
+                    tipo_partita = ev.get("nota", "Campionato")
                     
                     righe_giocatori = ""
                     convocati_list = []
@@ -322,19 +325,21 @@ elif menu == "🟢 Calendario e Convocazioni":
                         riga_num += 1
                     
                     sezione_formazione = ""
-                    if modulo_evento or titolari_evento:
+                    if titolari_evento:
                         titolari_validi = [t for t in titolari_evento if t in convocati_list]
-                        lista_titolari_html = "<br>".join([f"[{numeri_evento.get(t, '-')}] {t}" for t in titolari_validi]) if titolari_validi else "Nessun titolare selezionato"
-                        modulo_txt = modulo_evento if modulo_evento else "Da definire"
+                        lista_titolari_html = ""
                         
-                        sezione_formazione = f"""<table style='width: 100%; border-collapse: collapse; text-align: left; border: 2px solid black; border-top: none; background-color: #f9f9f9;'>
+                        if titolari_validi:
+                            for t in titolari_validi:
+                                num = numeri_evento.get(t, '-')
+                                lista_titolari_html += f"<div style='margin-bottom: 6px; font-size: 16px;'><span style='display: inline-block; width: 35px; padding: 2px 0; text-align: center; border: 2px solid black; background-color: #f0f0f0; margin-right: 15px; font-weight: bold;'>{num}</span> {t}</div>"
+                        else:
+                            lista_titolari_html = "<div style='font-style: italic;'>Nessun titolare selezionato</div>"
+                        
+                        sezione_formazione = f"""<table style='width: 100%; border-collapse: collapse; text-align: left; border: 2px solid black; border-top: none; background-color: white;'>
 <tr>
-<td style='border: 1px solid black; padding: 10px; font-weight: bold; width: 40%; vertical-align: top; color: black;'>
-MODULO TATTICO:<br>
-<span style='font-size: 24px; color: #1E88E5;'>{modulo_txt}</span>
-</td>
-<td style='border: 1px solid black; padding: 10px; vertical-align: top; color: black;'>
-<span style='font-weight: bold;'>FORMAZIONE INIZIALE:</span><br>
+<td style='padding: 15px; vertical-align: top; color: black;'>
+<div style='font-weight: bold; font-size: 18px; margin-bottom: 15px; text-align: center; border-bottom: 1px solid #ccc; padding-bottom: 5px;'>FORMAZIONE INIZIALE</div>
 {lista_titolari_html}
 </td>
 </tr>
@@ -346,14 +351,14 @@ MODULO TATTICO:<br>
                     html_distinta = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
 <tr>
-<td rowspan='5' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
-<td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px;'>CONVOCAZIONI</td>
+<td rowspan='6' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
+<td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px; background-color: #f0f0f0;'>CONVOCAZIONI</td>
 </tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
+<tr><td style='border: 1px solid black; padding: 5px; font-weight: bold;'>TIPO PARTITA: {tipo_partita}</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>DATA: {data_f}</td></tr>
-<tr><td style='border: 1px solid black; padding: 5px;'>ORA PARTITA: {ev.get("ora_partita", "___")}</td></tr>
-<tr><td style='border: 1px solid black; padding: 5px;'>ORA RITROVO: {ev.get("ora_convocazione", "___")}</td></tr>
-<tr><td colspan='2' style='border: 1px solid black; font-weight: bold; padding: 5px;'>LUOGO: {ind_campo}</td></tr>
+<tr><td style='border: 1px solid black; padding: 5px;'>ORA PARTITA: {ev.get("ora_partita", "___")} - ORA RITROVO: {ev.get("ora_convocazione", "___")}</td></tr>
+<tr><td style='border: 1px solid black; font-weight: bold; padding: 5px; background-color: #f9f9f9;'>LUOGO: {ind_campo}</td></tr>
 </table>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black; border-top: none;'>
 <tr style='font-weight: bold; background-color: #f0f0f0;'>
@@ -370,12 +375,13 @@ MODULO TATTICO:<br>
                     html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
 <tr>
-<td rowspan='4' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
-<td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px;'>FORMAZIONE UFFICIALE</td>
+<td rowspan='5' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
+<td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px; background-color: #f0f0f0;'>FORMAZIONE UFFICIALE</td>
 </tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
+<tr><td style='border: 1px solid black; padding: 5px; font-weight: bold;'>TIPO PARTITA: {tipo_partita}</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>DATA: {data_f}</td></tr>
-<tr><td style='border: 1px solid black; font-weight: bold; padding: 5px;'>LUOGO: {ind_campo}</td></tr>
+<tr><td style='border: 1px solid black; font-weight: bold; padding: 5px; background-color: #f9f9f9;'>LUOGO: {ind_campo}</td></tr>
 </table>
 {sezione_formazione}
 </div>"""
@@ -383,14 +389,11 @@ MODULO TATTICO:<br>
                     whatsapp_text = f"Ciao a tutti,\n\n"
                     whatsapp_text += f"⚽ *CONVOCAZIONI* ⚽\n"
                     whatsapp_text += f"⚽ *{sq_casa}-{sq_trasf}*\n"
+                    whatsapp_text += f"🏆 *{tipo_partita}*\n"
                     whatsapp_text += f"📅 *Data:* {data_f}\n"
                     whatsapp_text += f"⏰ *Ora Partita:* {ev.get('ora_partita', '___')}\n"
                     whatsapp_text += f"📍 *Ora Ritrovo:* {ev.get('ora_convocazione', '___')}\n"
                     whatsapp_text += f"🏟️ *Luogo:* {ind_campo}\n"
-                    
-                    nota_p = ev.get("nota", "").strip()
-                    if nota_p:
-                        whatsapp_text += f"📝 *Note:* {nota_p}\n"
                         
                     whatsapp_text += f"\n*ELENCO CONVOCATI:*\n"
                     if convocati_list:
@@ -462,14 +465,10 @@ MODULO TATTICO:<br>
                                 st.rerun()
 
                     with tab_formazione:
-                        st.write("#### ⚽ Modulo, Titolari e Numeri di Maglia")
+                        st.write("#### ⚽ Titolari e Numeri di Maglia")
                         if not convocati_list:
                             st.warning("⚠️ Prima devi selezionare i convocati nella scheda 'Compila Elenco'.")
                         else:
-                            modulo_salvato = st.session_state.db["storico_moduli"].get(ev["id"], "")
-                            nuovo_modulo = st.text_input("Inserisci il numero del modulo (es. 4-4-2, 3-3-2):", value=modulo_salvato, key=f"input_modulo_{ev['id']}")
-                            
-                            st.write("---")
                             st.write("**Seleziona i titolari e assegna il Numero di Maglia per la distinta:**")
                             
                             titolari_salvati = st.session_state.db["storico_titolari"].get(ev["id"], [])
@@ -492,7 +491,6 @@ MODULO TATTICO:<br>
                             st.write("")
                             if st.button("💾 Salva Formazione e Numeri", key=f"btn_salva_form_{ev['id']}", type="primary"):
                                 st.session_state.db["storico_titolari"][ev["id"]] = nuovi_titolari
-                                st.session_state.db["storico_moduli"][ev["id"]] = nuovo_modulo
                                 st.session_state.db["storico_numeri"][ev["id"]] = nuovi_numeri
                                 salvare_dati()
                                 st.success("Formazione salvata con successo!")
@@ -540,7 +538,7 @@ MODULO TATTICO:<br>
     with col2:
         nuova_orap = st.text_input("Ora Partita (es. 15:00)", key="new_orap")
         nuova_orac = st.text_input("Ora Convocazione (es. 14:00)", key="new_orac")
-        nuova_nota = st.text_input("Note (es. Campionato)", key="new_notap")
+        nuova_nota = st.selectbox("Tipo Partita", ["Campionato", "Amichevole", "Coppa Brescia"], key="new_notap")
         
     if st.button("Aggiungi Partita a Calendario"):
         if nuovo_avversario.strip() == "":
@@ -593,7 +591,7 @@ elif menu == "📊 Statistiche Allenamenti":
         st.table(tabella_all)
         
         if tabella_all:
-            html_all = "<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Allenamenti</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px;'>Giocatore</th><th style='padding:8px;'>🟢 Presenze</th><th style='padding:8px;'>🔴 Assenze</th><th style='padding:8px;'>🟡 Infortuni</th><th style='padding:8px;'>📈 % Presenza</th></tr>"
+            html_all = "<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Allenamenti</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: #f0f0f0;'>Giocatore</th><th style='padding:8px; background-color: #f0f0f0;'>🟢 Presenze</th><th style='padding:8px; background-color: #f0f0f0;'>🔴 Assenze</th><th style='padding:8px; background-color: #f0f0f0;'>🟡 Infortuni</th><th style='padding:8px; background-color: #f0f0f0;'>📈 % Presenza</th></tr>"
             for row in tabella_all:
                 html_all += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Presenze']}</td><td style='padding:8px;'>{row['🔴 Assenze']}</td><td style='padding:8px;'>{row['🟡 Infortuni']}</td><td style='padding:8px;'>{row['📈 % Presenza']}</td></tr>"
             html_all += "</table></body></html>"
@@ -653,7 +651,7 @@ elif menu == "🏆 Statistiche Giocatori":
         st.table(tabella_gare)
         
         if tabella_gare:
-            html_giocatori = "<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Giocatori</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px;'>Giocatore</th><th style='padding:8px;'>🟢 Convocato</th><th style='padding:8px;'>🔴 Non Conv.</th><th style='padding:8px;'>👕 Titolare</th><th style='padding:8px;'>📈 % Conv.</th><th style='padding:8px;'>⏱️ Min.</th><th style='padding:8px;'>⚽ Gol Fatti</th></tr>"
+            html_giocatori = "<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Giocatori</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: #f0f0f0;'>Giocatore</th><th style='padding:8px; background-color: #f0f0f0;'>🟢 Convocato</th><th style='padding:8px; background-color: #f0f0f0;'>🔴 Non Conv.</th><th style='padding:8px; background-color: #f0f0f0;'>👕 Titolare</th><th style='padding:8px; background-color: #f0f0f0;'>📈 % Conv.</th><th style='padding:8px; background-color: #f0f0f0;'>⏱️ Min.</th><th style='padding:8px; background-color: #f0f0f0;'>⚽ Gol Fatti</th></tr>"
             for row in tabella_gare:
                 html_giocatori += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Convocato']}</td><td style='padding:8px;'>{row['🔴 Non Conv.']}</td><td style='padding:8px;'>{row['👕 Titolare']}</td><td style='padding:8px;'>{row['📈 % Conv.']}</td><td style='padding:8px;'>{row['⏱️ Min.']}</td><td style='padding:8px;'>{row['⚽ Gol Fatti']}</td></tr>"
             html_giocatori += "</table></body></html>"
