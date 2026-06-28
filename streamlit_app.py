@@ -12,7 +12,6 @@ ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc"
 def connetti_foglio():
     try:
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        # Legge le credenziali dai Secrets di Streamlit Cloud
         creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(st.secrets["gcp_service_account"]), scope)
         client = gspread.authorize(creds)
         return client.open_by_key(ID_FOGLIO_GOOGLE).sheet1
@@ -27,71 +26,30 @@ def caricare_dati():
             contenuto = sheet.acell('A1').value
             if contenuto:
                 dati = json.loads(contenuto)
-                # Controllo chiavi esistenti
                 for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", "storico_numeri", "storico_gol", "storico_risultati"]:
-                    if k not in dati: 
-                        dati[k] = {}
+                    if k not in dati: dati[k] = {}
                 return dati
         except Exception:
-            pass # Se il foglio è vuoto o c'è un errore, passa ai dati di default
+            pass 
             
-    # Ritorno dati di default se foglio vuoto o errore
     return {
         "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
-        "eventi": [
-            {"id": "1", "data": "2026-06-23", "tipo": "Allenamento", "nota": "Campo Principale - ore 17:30"},
-            {"id": "2", "data": "2026-06-27", "tipo": "Partita", "avversario": "Real City", "luogo": "Trasferta", "ora_partita": "15:00", "ora_convocazione": "14:00", "indirizzo": "Via Stadio 5, Torino", "nota": "Campionato", "note_aggiuntive": ""}
-        ],
-        "storico_presenze": {},
-        "storico_minutaggio": {},
-        "storico_titolari": {},
-        "storico_moduli": {},
-        "storico_numeri": {},
-        "storico_gol": {},
-        "storico_risultati": {}
+        "eventi": [],
+        "storico_presenze": {}, "storico_minutaggio": {}, "storico_titolari": {},
+        "storico_moduli": {}, "storico_numeri": {}, "storico_gol": {}, "storico_risultati": {}
     }
 
 def salvare_dati():
     try:
         sheet = connetti_foglio()
         if sheet:
-            # L'aggiunta di indent=4 formatta il testo andando a capo
             stringa_json = json.dumps(st.session_state.db, ensure_ascii=False, indent=4)
             sheet.update_acell('A1', stringa_json)
     except Exception as e:
-        st.error(f"❌ VERO ERRORE DI SALVATAGGIO IN A1: {e}")
+        st.error(f"❌ ERRORE: {e}")
         st.stop()
 
-# --- CONFIGURAZIONE PAGINA ---
-st.set_page_config(page_title="MisterApp - Settore Giovanile", layout="centered")
-
-# --- CSS PER LOOK MOBILE E MENU RESPONSIVE (DARK/LIGHT MODE) ---
-st.markdown("""
-    <style>
-    .card { 
-        background-color: var(--secondary-background-color); 
-        color: var(--text-color);
-        border-radius: 15px; 
-        padding: 20px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
-        margin-bottom: 20px; 
-        border: 1px solid rgba(255,255,255,0.1);
-    }
-    
-    [data-testid="stSidebar"] div[role="radiogroup"] label {
-        padding: 12px 15px !important;
-        margin-bottom: 10px !important;
-        background-color: var(--secondary-background-color);
-        border-radius: 10px;
-        border: 1px solid rgba(255,255,255,0.1);
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] label p {
-        font-size: 18px !important;
-        font-weight: 600 !important;
-        color: var(--text-color) !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="MisterApp", layout="centered")
 
 def get_logo_html():
     for ext in ["png", "jpg", "jpeg"]:
@@ -99,35 +57,13 @@ def get_logo_html():
             with open(f"stemma.{ext}", "rb") as f:
                 encoded = base64.b64encode(f.read()).decode()
                 return f"<img src='data:image/{ext};base64,{encoded}' style='max-width: 100px; max-height: 120px; object-fit: contain;'>"
-    return "<div style='font-size: 50px;'>🛡️</div><div style='color: red; font-weight: bold; font-size: 14px;'>USO</div><div style='color: green; font-weight: bold; font-size: 14px;'>UNITED</div>"
+    return "<div style='font-size: 50px;'>🛡️</div>"
 
-# Inizializziamo lo stato di Streamlit
-if "db" not in st.session_state:
-    st.session_state.db = caricare_dati()
-    if "storico_minutaggio" not in st.session_state.db: st.session_state.db["storico_minutaggio"] = {}
-    if "storico_titolari" not in st.session_state.db: st.session_state.db["storico_titolari"] = {}
-    if "storico_moduli" not in st.session_state.db: st.session_state.db["storico_moduli"] = {}
-    if "storico_numeri" not in st.session_state.db: st.session_state.db["storico_numeri"] = {}
-    if "storico_gol" not in st.session_state.db: st.session_state.db["storico_gol"] = {}
-    if "storico_risultati" not in st.session_state.db: st.session_state.db["storico_risultati"] = {}
+if "db" not in st.session_state: st.session_state.db = caricare_dati()
+if "edit_mode" not in st.session_state: st.session_state.edit_mode = None
+if "edit_evento" not in st.session_state: st.session_state.edit_evento = None
 
-if "edit_mode" not in st.session_state:
-    st.session_state.edit_mode = None
-if "edit_evento" not in st.session_state:
-    st.session_state.edit_evento = None
-
-# --- MENU LATERALE ---
-menu = st.sidebar.radio("Navigazione", [
-    "🔵 Calendario Allenamenti",
-    "🟢 Calendario e Convocazioni", 
-    "📊 Statistiche Allenamenti",
-    "🏆 Statistiche Giocatori",
-    "📈 Statistiche Squadra",
-    "🏃 Gestione Rosa"
-], key="menu_principale")
-
-st.sidebar.write("---")
-st.sidebar.info("MisterApp Cloud - Attiva")
+menu = st.sidebar.radio("Navigazione", ["🔵 Calendario Allenamenti", "🟢 Calendario e Convocazioni", "📊 Statistiche Allenamenti", "🏆 Statistiche Giocatori", "📈 Statistiche Squadra", "🏃 Gestione Rosa"])
 
 # ==========================================
 # SCHERMATA 1: ALLENAMENTI
@@ -220,8 +156,6 @@ if menu == "🔵 Calendario Allenamenti":
 # ==========================================
 elif menu == "🟢 Calendario e Convocazioni":
     st.header("🟢 Calendario e Convocazioni")
-    
-    st.subheader("Le tue Gare:")
     eventi_partita = [ev for ev in st.session_state.db["eventi"] if ev["tipo"] in ["Partita", "Torneo"]]
     opzioni_tipo_partita = ["Campionato", "Amichevole", "Coppa Brescia"]
     
@@ -238,7 +172,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                     mod_data = st.date_input("Data", curr_date, key=f"mod_dp_{ev['id']}")
                     mod_avv = st.text_input("Avversario", value=ev.get("avversario", ""), key=f"mod_avv_{ev['id']}")
                     mod_luogo = st.selectbox("Luogo", ["Casa", "Trasferta"], index=0 if ev.get("luogo", "Casa")=="Casa" else 1, key=f"mod_lu_{ev['id']}")
-                    
                     if mod_luogo == "Trasferta":
                         mod_indirizzo = st.text_input("Indirizzo del campo", value=ev.get("indirizzo", ""), key=f"mod_ind_{ev['id']}")
                     else:
@@ -276,9 +209,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                 sq_casa = "USO UNITED" if ev.get("luogo", "Casa") == "Casa" else ev.get("avversario", "Avversario")
                 sq_trasf = ev.get("avversario", "Avversario") if ev.get("luogo", "Casa") == "Casa" else "USO UNITED"
                 
-                titolo_box = f"🟢 {sq_casa}-{sq_trasf} del {data_f}"
-                
-                with st.expander(titolo_box):
+                with st.expander(f"🟢 {sq_casa}-{sq_trasf} del {data_f}"):
                     col_mod, col_del = st.columns([1, 1])
                     with col_mod:
                         if st.button("✏️ Modifica Gara", key=f"ed_evp_{ev['id']}"):
@@ -290,7 +221,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                             if ev["id"] in st.session_state.db["storico_presenze"]: del st.session_state.db["storico_presenze"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_minutaggio"]: del st.session_state.db["storico_minutaggio"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_titolari"]: del st.session_state.db["storico_titolari"][ev["id"]]
-                            if ev["id"] in st.session_state.db["storico_moduli"]: del st.session_state.db["storico_moduli"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_numeri"]: del st.session_state.db["storico_numeri"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_gol"]: del st.session_state.db["storico_gol"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_risultati"]: del st.session_state.db["storico_risultati"][ev["id"]]
@@ -318,7 +248,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                         stato = appello_evento.get(ragazzo, "🟢 Convocato")
                         is_convocato = "Convocato" in stato and "Non" not in stato
                         
-                        # Mostra le 'X' solo per Convocato / Non Convocato
                         c_mark = "X" if is_convocato else ""
                         nc_mark = "X" if not is_convocato else ""
                         
@@ -328,7 +257,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                         righe_giocatori += f"<tr><td style='border: 1px solid black; padding: 5px;'>{riga_num}</td><td style='border: 1px solid black; padding: 5px; text-align: left;'>{ragazzo}</td><td style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
                         riga_num += 1
                     
-                    # Formazione con stesso stile Convocazioni
                     righe_formazione = ""
                     if titolari_evento:
                         titolari_validi = [t for t in titolari_evento if t in convocati_list]
@@ -340,7 +268,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                     
                     logo_immagine = get_logo_html()
                     
-                    # HTML Convocazioni
                     html_distinta = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
 <tr>
@@ -364,7 +291,6 @@ elif menu == "🟢 Calendario e Convocazioni":
 </table>
 </div>"""
 
-                    # HTML Formazione
                     html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
 <tr>
@@ -404,32 +330,18 @@ elif menu == "🟢 Calendario e Convocazioni":
                         whatsapp_text += "*(Nessun convocato ancora selezionato)*\n"
                     whatsapp_text += "\n*Forza USO UNITED!* 💙💚"
 
-                    tab1, tab_formazione, tab2, tab3 = st.tabs(["⚙️ Compila Elenco", "⚽ Formazione", "📄 Convocazioni Ufficiali", "📱 Messaggio WhatsApp"])
+                    tab1, tab_formazione, tab2, tab3 = st.tabs(["⚙️ Compila Elenco", "⚽ Formazione e Dati Partita", "📄 Convocazioni Ufficiali", "📱 Messaggio WhatsApp"])
                     
                     with tab1:
                         if not st.session_state.db["ragazzi"]:
                             st.warning("Rosa vuota.")
                         else:
-                            # Sezione Risultato Tempi
-                            st.write("#### 🏆 Risultato Gara")
-                            col_t1, col_t2, col_t3 = st.columns(3)
-                            with col_t1:
-                                ris_t1 = st.text_input("1° Tempo (es. 1-0)", value=ris_evento.get("t1", ""), key=f"ris_t1_{ev['id']}")
-                            with col_t2:
-                                ris_t2 = st.text_input("2° Tempo (es. 2-2)", value=ris_evento.get("t2", ""), key=f"ris_t2_{ev['id']}")
-                            with col_t3:
-                                ris_t3 = st.text_input("3° Tempo (es. 0-1)", value=ris_evento.get("t3", ""), key=f"ris_t3_{ev['id']}")
-                                
-                            st.write("---")
-                            st.write("#### 🏃 Convocati, Minuti e Gol")
-
+                            st.write("#### 🏃 Seleziona Convocati")
                             resoconto_corrente = {}
-                            resoconto_minuti = {}
-                            resoconto_gol = {}
                             opzioni = ["🟢 Convocato", "🔴 Non Convocato"]
                             
                             for ragazzo in st.session_state.db["ragazzi"]:
-                                col_nome, col_stato, col_minuti, col_gol = st.columns([1, 1.2, 0.8, 0.8])
+                                col_nome, col_stato = st.columns([1, 2])
                                 with col_nome: st.write(f"**{ragazzo}**")
                                 with col_stato:
                                     stato_precedente = appello_evento.get(ragazzo, opzioni[0])
@@ -437,64 +349,64 @@ elif menu == "🟢 Calendario e Convocazioni":
                                     stato = st.radio(f"Stato_{ragazzo}_{ev['id']}", opzioni, index=indice_default, horizontal=True, label_visibility="collapsed", key=f"p_{ragazzo}_{ev['id']}")
                                     resoconto_corrente[ragazzo] = stato
                                     
-                                with col_minuti:
-                                    if "Convocato" in stato and "Non" not in stato:
-                                        min_prec = minutaggio_evento.get(ragazzo, 0)
-                                        minuti = st.number_input("Min", min_value=0, max_value=150, value=min_prec, step=1, label_visibility="collapsed", key=f"m_{ragazzo}_{ev['id']}", help="Minuti giocati")
-                                        resoconto_minuti[ragazzo] = minuti
-                                    else:
-                                        resoconto_minuti[ragazzo] = 0
-                                        st.write("") 
-
-                                with col_gol:
-                                    if "Convocato" in stato and "Non" not in stato:
-                                        gol_prec = gol_evento.get(ragazzo, 0)
-                                        gol = st.number_input("Gol", min_value=0, max_value=50, value=gol_prec, step=1, label_visibility="collapsed", key=f"g_{ragazzo}_{ev['id']}", help="Gol fatti")
-                                        resoconto_gol[ragazzo] = gol
-                                    else:
-                                        resoconto_gol[ragazzo] = 0
-                                        st.write("") 
-                            
                             st.write("")
-                            if st.button("💾 Salva Dati Gara", key=f"btn_salvap_{ev['id']}", type="primary"):
+                            if st.button("💾 Salva Convocazioni", key=f"btn_salva_conv_{ev['id']}", type="primary"):
                                 st.session_state.db["storico_presenze"][ev["id"]] = resoconto_corrente
-                                st.session_state.db["storico_minutaggio"][ev["id"]] = resoconto_minuti
-                                st.session_state.db["storico_gol"][ev["id"]] = resoconto_gol
-                                st.session_state.db["storico_risultati"][ev["id"]] = {"t1": ris_t1, "t2": ris_t2, "t3": ris_t3}
                                 salvare_dati()
-                                st.success("Dati archiviati con successo!")
+                                st.success("Convocazioni salvate con successo!")
                                 st.rerun()
 
                     with tab_formazione:
-                        st.write("#### ⚽ Titolari e Numeri di Maglia")
+                        st.write("#### 🏆 Risultato Gara")
+                        col_t1, col_t2, col_t3 = st.columns(3)
+                        with col_t1:
+                            ris_t1 = st.text_input("1° Tempo (es. 1-0)", value=ris_evento.get("t1", ""), key=f"ris_t1_{ev['id']}")
+                        with col_t2:
+                            ris_t2 = st.text_input("2° Tempo (es. 2-2)", value=ris_evento.get("t2", ""), key=f"ris_t2_{ev['id']}")
+                        with col_t3:
+                            ris_t3 = st.text_input("3° Tempo (es. 0-1)", value=ris_evento.get("t3", ""), key=f"ris_t3_{ev['id']}")
+                        
+                        st.write("---")
+                        st.write("#### ⚽ Titolari, Numeri, Minuti e Gol")
+                        
                         if not convocati_list:
                             st.warning("⚠️ Prima devi selezionare i convocati nella scheda 'Compila Elenco'.")
                         else:
-                            st.write("**Seleziona i titolari e assegna il Numero di Maglia per la distinta:**")
-                            
                             titolari_salvati = st.session_state.db["storico_titolari"].get(ev["id"], [])
                             numeri_salvati = st.session_state.db["storico_numeri"].get(ev["id"], {})
                             
                             nuovi_titolari = []
                             nuovi_numeri = {}
+                            resoconto_minuti = {}
+                            resoconto_gol = {}
                             
                             for c in convocati_list:
-                                col_tit, col_num = st.columns([3, 1])
+                                col_tit, col_num, col_min, col_g = st.columns([2.5, 1, 1, 1])
                                 with col_tit:
                                     is_tit = st.checkbox(f"Titolare: {c}", value=(c in titolari_salvati), key=f"tit_{c}_{ev['id']}")
-                                    if is_tit:
-                                        nuovi_titolari.append(c)
+                                    if is_tit: nuovi_titolari.append(c)
                                 with col_num:
                                     num_prec = numeri_salvati.get(c, "")
-                                    num = st.text_input("N° Maglia", value=num_prec, key=f"num_{c}_{ev['id']}", label_visibility="collapsed", placeholder="N°")
+                                    num = st.text_input("N°", value=num_prec, key=f"num_{c}_{ev['id']}", label_visibility="collapsed", placeholder="N°")
                                     nuovi_numeri[c] = num
+                                with col_min:
+                                    min_prec = minutaggio_evento.get(c, 0)
+                                    minuti = st.number_input("Min", min_value=0, max_value=150, value=min_prec, step=1, label_visibility="collapsed", key=f"m_{c}_{ev['id']}", help="Minuti giocati")
+                                    resoconto_minuti[c] = minuti
+                                with col_g:
+                                    gol_prec = gol_evento.get(c, 0)
+                                    gol = st.number_input("Gol", min_value=0, max_value=50, value=gol_prec, step=1, label_visibility="collapsed", key=f"g_{c}_{ev['id']}", help="Gol fatti")
+                                    resoconto_gol[c] = gol
                             
                             st.write("")
-                            if st.button("💾 Salva Formazione e Numeri", key=f"btn_salva_form_{ev['id']}", type="primary"):
+                            if st.button("💾 Salva Formazione e Dati", key=f"btn_salva_form_{ev['id']}", type="primary"):
                                 st.session_state.db["storico_titolari"][ev["id"]] = nuovi_titolari
                                 st.session_state.db["storico_numeri"][ev["id"]] = nuovi_numeri
+                                st.session_state.db["storico_risultati"][ev["id"]] = {"t1": ris_t1, "t2": ris_t2, "t3": ris_t3}
+                                st.session_state.db["storico_minutaggio"][ev["id"]] = resoconto_minuti
+                                st.session_state.db["storico_gol"][ev["id"]] = resoconto_gol
                                 salvare_dati()
-                                st.success("Formazione salvata con successo!")
+                                st.success("Formazione e Dati salvati con successo!")
                                 st.rerun()
 
                             st.write("---")
