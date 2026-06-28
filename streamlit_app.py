@@ -304,7 +304,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                     gol_evento = st.session_state.db["storico_gol"].get(ev["id"], {})
                     ris_evento = st.session_state.db["storico_risultati"].get(ev["id"], {})
                     titolari_evento = st.session_state.db["storico_titolari"].get(ev["id"], [])
-                    modulo_evento = st.session_state.db["storico_moduli"].get(ev["id"], "")
                     numeri_evento = st.session_state.db["storico_numeri"].get(ev["id"], {})
                     
                     ind_campo = ev.get("indirizzo", "Campo di Casa") if ev.get("luogo", "Casa") == "Trasferta" else "Campo di Casa"
@@ -329,15 +328,15 @@ elif menu == "🟢 Calendario e Convocazioni":
                         righe_giocatori += f"<tr><td style='border: 1px solid black; padding: 5px;'>{riga_num}</td><td style='border: 1px solid black; padding: 5px; text-align: left;'>{ragazzo}</td><td style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
                         riga_num += 1
                     
-                    # Formazione senza sezione nera
-                    lista_titolari_html = ""
+                    # Formazione con stesso stile Convocazioni
+                    righe_formazione = ""
                     if titolari_evento:
                         titolari_validi = [t for t in titolari_evento if t in convocati_list]
                         for t in titolari_validi:
                             num = numeri_evento.get(t, '-')
-                            lista_titolari_html += f"<div style='margin-bottom: 6px; font-size: 16px;'><span style='display: inline-block; width: 35px; padding: 2px 0; text-align: center; border: 2px solid black; background-color: #f0f0f0; margin-right: 15px; font-weight: bold;'>{num}</span> {t}</div>"
+                            righe_formazione += f"<tr><td style='border: 1px solid black; padding: 5px; font-weight: bold; width: 20%;'>{num}</td><td style='border: 1px solid black; padding: 5px; text-align: left; width: 80%;'>{t}</td></tr>"
                     else:
-                        lista_titolari_html = "<div style='font-style: italic;'>Nessun titolare selezionato</div>"
+                        righe_formazione = "<tr><td colspan='2' style='border: 1px solid black; padding: 5px; font-style: italic;'>Nessun titolare selezionato</td></tr>"
                     
                     logo_immagine = get_logo_html()
                     
@@ -365,22 +364,26 @@ elif menu == "🟢 Calendario e Convocazioni":
 </table>
 </div>"""
 
-                    # HTML Formazione (senza la parte nera)
+                    # HTML Formazione
                     html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
 <tr>
-<td rowspan='5' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
+<td rowspan='6' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
 <td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px; background-color: #f0f0f0;'>FORMAZIONE UFFICIALE</td>
 </tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px; font-weight: bold;'>TIPO PARTITA: {tipo_partita}</td></tr>
 <tr><td style='border: 1px solid black; padding: 5px;'>DATA: {data_f}</td></tr>
+<tr><td style='border: 1px solid black; padding: 5px;'>ORA PARTITA: {ev.get("ora_partita", "___")} - ORA RITROVO: {ev.get("ora_convocazione", "___")}</td></tr>
 <tr><td style='border: 1px solid black; font-weight: bold; padding: 5px; background-color: #f9f9f9;'>LUOGO: {ind_campo}</td></tr>
 </table>
-<div style='border: 2px solid black; border-top: none; padding: 20px;'>
-<div style='font-weight: bold; font-size: 18px; margin-bottom: 15px; text-align: center; border-bottom: 1px solid #ccc; padding-bottom: 5px;'>FORMAZIONE INIZIALE</div>
-{lista_titolari_html}
-</div>
+<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black; border-top: none;'>
+<tr style='font-weight: bold; background-color: #f0f0f0;'>
+<td style='border: 1px solid black; padding: 5px; width: 20%;'>N°</td>
+<td style='border: 1px solid black; padding: 5px; width: 80%;'>Nome e Cognome</td>
+</tr>
+{righe_formazione}
+</table>
 </div>"""
                     
                     whatsapp_text = f"Ciao a tutti,\n\n"
