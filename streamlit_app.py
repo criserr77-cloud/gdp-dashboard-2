@@ -27,7 +27,9 @@ def caricare_dati():
             if contenuto:
                 dati = json.loads(contenuto)
                 # Inizializza nuove chiavi se mancano
-                for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", "storico_numeri", "storico_gol", "storico_risultati", "anagrafica_ruolo", "anagrafica_nascita"]:
+                for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", 
+                          "storico_numeri", "storico_gol", "storico_risultati", "anagrafica_ruolo", 
+                          "anagrafica_nascita", "storico_capitano", "storico_vicecapitano"]:
                     if k not in dati: dati[k] = {}
                 return dati
         except Exception:
@@ -38,7 +40,7 @@ def caricare_dati():
         "eventi": [],
         "storico_presenze": {}, "storico_minutaggio": {}, "storico_titolari": {},
         "storico_moduli": {}, "storico_numeri": {}, "storico_gol": {}, "storico_risultati": {},
-        "anagrafica_ruolo": {}, "anagrafica_nascita": {}
+        "anagrafica_ruolo": {}, "anagrafica_nascita": {}, "storico_capitano": {}, "storico_vicecapitano": {}
     }
 
 def salvare_dati():
@@ -56,7 +58,6 @@ st.set_page_config(page_title="MisterApp", layout="centered")
 # --- CSS PER MENU SMARTPHONE E DESIGN ---
 st.markdown("""
     <style>
-    /* Card per i contenitori */
     .card { 
         background-color: var(--secondary-background-color); 
         color: var(--text-color);
@@ -67,7 +68,6 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.1);
     }
     
-    /* Voci del menu laterale ingrandite per touch */
     [data-testid="stSidebar"] div[role="radiogroup"] label {
         padding: 16px 20px !important;
         margin-bottom: 12px !important;
@@ -81,7 +81,6 @@ st.markdown("""
         font-weight: 700 !important;
         color: var(--text-color) !important;
     }
-    /* Effetto tocco */
     [data-testid="stSidebar"] div[role="radiogroup"] label:active {
         opacity: 0.7;
     }
@@ -101,6 +100,8 @@ if "db" not in st.session_state:
     st.session_state.db = caricare_dati()
     if "anagrafica_ruolo" not in st.session_state.db: st.session_state.db["anagrafica_ruolo"] = {}
     if "anagrafica_nascita" not in st.session_state.db: st.session_state.db["anagrafica_nascita"] = {}
+    if "storico_capitano" not in st.session_state.db: st.session_state.db["storico_capitano"] = {}
+    if "storico_vicecapitano" not in st.session_state.db: st.session_state.db["storico_vicecapitano"] = {}
 
 if "edit_mode" not in st.session_state: st.session_state.edit_mode = None
 if "edit_evento" not in st.session_state: st.session_state.edit_evento = None
@@ -273,6 +274,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                             if ev["id"] in st.session_state.db["storico_numeri"]: del st.session_state.db["storico_numeri"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_gol"]: del st.session_state.db["storico_gol"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_risultati"]: del st.session_state.db["storico_risultati"][ev["id"]]
+                            if ev["id"] in st.session_state.db.get("storico_capitano", {}): del st.session_state.db["storico_capitano"][ev["id"]]
+                            if ev["id"] in st.session_state.db.get("storico_vicecapitano", {}): del st.session_state.db["storico_vicecapitano"][ev["id"]]
                             salvare_dati()
                             st.rerun()
                     
@@ -284,6 +287,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                     ris_evento = st.session_state.db["storico_risultati"].get(ev["id"], {})
                     titolari_evento = st.session_state.db["storico_titolari"].get(ev["id"], [])
                     numeri_evento = st.session_state.db["storico_numeri"].get(ev["id"], {})
+                    capitano_evento = st.session_state.db.get("storico_capitano", {}).get(ev["id"], "")
+                    vice_evento = st.session_state.db.get("storico_vicecapitano", {}).get(ev["id"], "")
                     
                     ind_campo = ev.get("indirizzo", "Campo di Casa") if ev.get("luogo", "Casa") == "Trasferta" else "Campo di Casa"
                     tipo_partita = ev.get("nota", "Campionato")
@@ -311,9 +316,17 @@ elif menu == "🟢 Calendario e Convocazioni":
                         titolari_validi = [t for t in titolari_evento if t in convocati_list]
                         for t in titolari_validi:
                             num = numeri_evento.get(t, '-')
-                            righe_formazione += f"<tr><td style='border: 1px solid black; padding: 5px; font-weight: bold; width: 20%;'>{num}</td><td style='border: 1px solid black; padding: 5px; text-align: left; width: 80%;'>{t}</td></tr>"
+                            parts = t.split(" ", 1)
+                            nome_t = parts[0]
+                            cognome_t = parts[1] if len(parts) > 1 else ""
+                            
+                            badge = ""
+                            if t == capitano_evento: badge = " <span style='color: blue; font-weight: bold;'>(C)</span>"
+                            elif t == vice_evento: badge = " <span style='color: green; font-weight: bold;'>(VC)</span>"
+                            
+                            righe_formazione += f"<tr><td style='border: 1px solid black; padding: 5px; font-weight: bold; width: 10%;'>{num}</td><td style='border: 1px solid black; padding: 5px; text-align: left; width: 45%;'>{nome_t}</td><td style='border: 1px solid black; padding: 5px; text-align: left; width: 45%;'>{cognome_t}{badge}</td></tr>"
                     else:
-                        righe_formazione = "<tr><td colspan='2' style='border: 1px solid black; padding: 5px; font-style: italic;'>Nessun titolare selezionato</td></tr>"
+                        righe_formazione = "<tr><td colspan='3' style='border: 1px solid black; padding: 5px; font-style: italic;'>Nessun titolare selezionato</td></tr>"
                     
                     logo_immagine = get_logo_html()
                     
@@ -341,7 +354,7 @@ elif menu == "🟢 Calendario e Convocazioni":
 </table>
 </div>"""
 
-                    # HTML Formazione (senza ora e luogo)
+                    # HTML Formazione (senza ora e luogo, con NOME e COGNOME divisi)
                     html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
 <tr>
@@ -354,8 +367,9 @@ elif menu == "🟢 Calendario e Convocazioni":
 </table>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black; border-top: none;'>
 <tr style='font-weight: bold; background-color: #f0f0f0;'>
-<td style='border: 1px solid black; padding: 5px; width: 20%;'>N°</td>
-<td style='border: 1px solid black; padding: 5px; width: 80%;'>Nome e Cognome</td>
+<td style='border: 1px solid black; padding: 5px; width: 10%;'>N°</td>
+<td style='border: 1px solid black; padding: 5px; width: 45%;'>Nome</td>
+<td style='border: 1px solid black; padding: 5px; width: 45%;'>Cognome</td>
 </tr>
 {righe_formazione}
 </table>
@@ -416,7 +430,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             ris_t3 = st.text_input("3° Tempo (es. 0-1)", value=ris_evento.get("t3", ""), key=f"ris_t3_{ev['id']}")
                         
                         st.write("---")
-                        st.write("#### ⚽ Titolari, Numeri, Minuti e Gol")
+                        st.write("#### ⚽ Inserisci Formazione e Prestazioni")
                         
                         if not convocati_list:
                             st.warning("⚠️ Prima devi selezionare i convocati nella scheda 'Compila Elenco'.")
@@ -429,23 +443,52 @@ elif menu == "🟢 Calendario e Convocazioni":
                             resoconto_minuti = {}
                             resoconto_gol = {}
                             
+                            # Intestazioni delle colonne Formazione
+                            c_n, c_nome, c_cognome, c_tit, c_min, c_g = st.columns([1, 1.5, 1.5, 1, 1, 1])
+                            c_n.markdown("**N°**")
+                            c_nome.markdown("**Nome**")
+                            c_cognome.markdown("**Cognome**")
+                            c_tit.markdown("**Tit.**")
+                            c_min.markdown("**Min.**")
+                            c_g.markdown("**Gol**")
+                            
                             for c in convocati_list:
-                                col_num, col_tit, col_min, col_g = st.columns([1, 2.5, 1, 1])
+                                parts = c.split(" ", 1)
+                                nome_str = parts[0]
+                                cogn_str = parts[1] if len(parts) > 1 else ""
+                                
+                                col_num, col_nome, col_cognome, col_tit, col_min, col_g = st.columns([1, 1.5, 1.5, 1, 1, 1])
                                 with col_num:
                                     num_prec = numeri_salvati.get(c, "")
-                                    num = st.text_input("N°", value=num_prec, key=f"num_{c}_{ev['id']}", label_visibility="collapsed", placeholder="N°")
+                                    num = st.text_input("N°", value=num_prec, key=f"num_{c}_{ev['id']}", label_visibility="collapsed")
                                     nuovi_numeri[c] = num
+                                with col_nome:
+                                    st.write(nome_str)
+                                with col_cognome:
+                                    st.write(cogn_str)
                                 with col_tit:
-                                    is_tit = st.checkbox(f"Titolare: {c}", value=(c in titolari_salvati), key=f"tit_{c}_{ev['id']}")
+                                    is_tit = st.checkbox("Tit", value=(c in titolari_salvati), key=f"tit_{c}_{ev['id']}", label_visibility="collapsed")
                                     if is_tit: nuovi_titolari.append(c)
                                 with col_min:
                                     min_prec = minutaggio_evento.get(c, 0)
-                                    minuti = st.number_input("Min", min_value=0, max_value=150, value=min_prec, step=1, label_visibility="collapsed", key=f"m_{c}_{ev['id']}", help="Minuti giocati")
+                                    minuti = st.number_input("Min", min_value=0, max_value=150, value=min_prec, step=1, label_visibility="collapsed", key=f"m_{c}_{ev['id']}")
                                     resoconto_minuti[c] = minuti
                                 with col_g:
                                     gol_prec = gol_evento.get(c, 0)
-                                    gol = st.number_input("Gol", min_value=0, max_value=50, value=gol_prec, step=1, label_visibility="collapsed", key=f"g_{c}_{ev['id']}", help="Gol fatti")
+                                    gol = st.number_input("Gol", min_value=0, max_value=50, value=gol_prec, step=1, label_visibility="collapsed", key=f"g_{c}_{ev['id']}")
                                     resoconto_gol[c] = gol
+                            
+                            st.write("---")
+                            st.write("#### © Assegna Fasce")
+                            opzioni_fasce = ["Nessuno"] + convocati_list
+                            idx_cap = opzioni_fasce.index(capitano_evento) if capitano_evento in opzioni_fasce else 0
+                            idx_vice = opzioni_fasce.index(vice_evento) if vice_evento in opzioni_fasce else 0
+                            
+                            col_cap, col_vice = st.columns(2)
+                            with col_cap:
+                                input_capitano = st.selectbox("Capitano (C)", opzioni_fasce, index=idx_cap, key=f"cap_{ev['id']}")
+                            with col_vice:
+                                input_vice = st.selectbox("Vice-Capitano (VC)", opzioni_fasce, index=idx_vice, key=f"vice_{ev['id']}")
                             
                             st.write("")
                             if st.button("💾 Salva Formazione e Dati", key=f"btn_salva_form_{ev['id']}", type="primary"):
@@ -454,6 +497,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 st.session_state.db["storico_risultati"][ev["id"]] = {"t1": ris_t1, "t2": ris_t2, "t3": ris_t3}
                                 st.session_state.db["storico_minutaggio"][ev["id"]] = resoconto_minuti
                                 st.session_state.db["storico_gol"][ev["id"]] = resoconto_gol
+                                st.session_state.db.setdefault("storico_capitano", {})[ev["id"]] = input_capitano if input_capitano != "Nessuno" else ""
+                                st.session_state.db.setdefault("storico_vicecapitano", {})[ev["id"]] = input_vice if input_vice != "Nessuno" else ""
                                 salvare_dati()
                                 st.success("Formazione e Dati salvati con successo!")
                                 st.rerun()
@@ -769,7 +814,6 @@ elif menu == "🏃 Gestione Rosa":
     else:
         st.markdown("### 📋 Elenco Giocatori")
         
-        # Intestazione della Tabella Rosa
         col_n, col_r, col_d, col_azioni = st.columns([2, 1.5, 1.5, 2])
         col_n.markdown("**Nome e Cognome**")
         col_r.markdown("**Ruolo**")
