@@ -439,7 +439,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             nuovi_numeri = {}
                             resoconto_gol = {}
                             
-                            # Intestazioni Formazione (senza minuti)
+                            # Intestazioni Formazione
                             c_n, c_nome, c_cognome, c_tit, c_g = st.columns([1, 2, 2, 1, 1])
                             c_n.markdown("**N°**")
                             c_nome.markdown("**Nome**")
@@ -803,25 +803,19 @@ elif menu == "🏃 Gestione Rosa":
     else:
         st.markdown("### 📋 Elenco Giocatori")
         
-        col_n, col_r, col_d, col_azioni = st.columns([2, 1.5, 1.5, 2])
+        col_n, col_d, col_r, col_azioni = st.columns([2.5, 1.5, 1.5, 1.5])
         col_n.markdown("**Nome e Cognome**")
-        col_r.markdown("**Ruolo**")
         col_d.markdown("**Data Nascita**")
+        col_r.markdown("**Ruolo**")
         col_azioni.markdown("**Azioni**")
         st.write("---")
         
         for i, ragazzo in enumerate(list(st.session_state.db["ragazzi"])):
             if st.session_state.edit_mode == i:
                 st.markdown(f"**✏️ Stai modificando: {ragazzo}**")
-                c1, c2, c3 = st.columns([1.5, 1.5, 1.5])
-                with c1: 
-                    nuovo_nome_mod = st.text_input("Nome", value=ragazzo, key=f"edit_input_{i}")
-                
-                ruolo_prec = st.session_state.db.get("anagrafica_ruolo", {}).get(ragazzo, "Non definito")
-                ruoli_disp = ["Portiere", "Difensore", "Centrocampista", "Attaccante", "Non definito"]
-                idx_r = ruoli_disp.index(ruolo_prec) if ruolo_prec in ruoli_disp else 4
-                with c2: 
-                    nuovo_ruolo_mod = st.selectbox("Ruolo", ruoli_disp, index=idx_r, key=f"edit_r_{i}")
+                c_name, c_date, c_role = st.columns([2.5, 1.5, 1.5])
+                with c_name: 
+                    nuovo_nome_mod = st.text_input("Nome", value=ragazzo, key=f"edit_input_{i}", label_visibility="collapsed")
                 
                 nascita_prec = st.session_state.db.get("anagrafica_nascita", {}).get(ragazzo, "")
                 if nascita_prec:
@@ -829,12 +823,18 @@ elif menu == "🏃 Gestione Rosa":
                     except: d_obj = datetime.date(2014, 1, 1)
                 else:
                     d_obj = datetime.date(2014, 1, 1)
-                with c3: 
-                    nuova_nascita_mod = st.date_input("Nascita", d_obj, key=f"edit_d_{i}")
+                with c_date: 
+                    nuova_nascita_mod = st.date_input("Nascita", d_obj, key=f"edit_d_{i}", label_visibility="collapsed")
+                    
+                ruolo_prec = st.session_state.db.get("anagrafica_ruolo", {}).get(ragazzo, "Non definito")
+                ruoli_disp = ["Portiere", "Difensore", "Centrocampista", "Attaccante", "Non definito"]
+                idx_r = ruoli_disp.index(ruolo_prec) if ruolo_prec in ruoli_disp else 4
+                with c_role: 
+                    nuovo_ruolo_mod = st.selectbox("Ruolo", ruoli_disp, index=idx_r, key=f"edit_r_{i}", label_visibility="collapsed")
                 
-                col_s, col_a = st.columns(2)
+                col_s, col_a, _ = st.columns([1, 1, 2])
                 with col_s:
-                    if st.button("💾 Salva Modifiche", key=f"save_btn_{i}", type="primary"):
+                    if st.button("💾 Salva", key=f"save_btn_{i}", type="primary"):
                         nuovo_nome_mod = nuovo_nome_mod.strip()
                         nome_finale = ragazzo
                         if nuovo_nome_mod and nuovo_nome_mod != ragazzo and nuovo_nome_mod not in st.session_state.db["ragazzi"]:
@@ -878,16 +878,16 @@ elif menu == "🏃 Gestione Rosa":
                     except:
                         pass
                 
-                c_n, c_r, c_d, c_mod, c_del = st.columns([2, 1.5, 1.5, 1, 1])
+                c_n, c_d, c_r, c_mod, c_del = st.columns([2.5, 1.5, 1.5, 0.75, 0.75])
                 c_n.write(f"**{ragazzo}**")
-                c_r.write(ruolo_val)
                 c_d.write(nascita_val)
+                c_r.write(ruolo_val)
                 with c_mod:
-                    if st.button("✏️ Modifica", key=f"edit_btn_{i}"):
+                    if st.button("✏️", key=f"edit_btn_{i}", help="Modifica Giocatore"):
                         st.session_state.edit_mode = i
                         st.rerun()
                 with c_del:
-                    if st.button("🗑️ Elimina", key=f"del_btn_{i}"):
+                    if st.button("🗑️", key=f"del_btn_{i}", help="Elimina Giocatore"):
                         st.session_state.db["ragazzi"].remove(ragazzo)
                         if ragazzo in st.session_state.db.get("anagrafica_ruolo", {}): del st.session_state.db["anagrafica_ruolo"][ragazzo]
                         if ragazzo in st.session_state.db.get("anagrafica_nascita", {}): del st.session_state.db["anagrafica_nascita"][ragazzo]
@@ -896,16 +896,17 @@ elif menu == "🏃 Gestione Rosa":
                 st.write("---")
                     
     st.subheader("➕ Aggiungi un nuovo giocatore")
-    col_n, col_r, col_d = st.columns(3)
-    with col_n: nuovo_nome_ins = st.text_input("Nome e Cognome:", key="nuovo_ins_input")
-    with col_r: nuovo_ruolo_ins = st.selectbox("Ruolo", ["Portiere", "Difensore", "Centrocampista", "Attaccante", "Non definito"])
-    with col_d: nuova_nascita_ins = st.date_input("Data di Nascita", datetime.date(2014, 1, 1))
-    
-    if st.button("Inserisci in Squadra"):
-        if nuovo_nome_ins.strip() != "" and nuovo_nome_ins.strip() not in st.session_state.db["ragazzi"]:
-            st.session_state.db["ragazzi"].append(nuovo_nome_ins.strip())
-            st.session_state.db.setdefault("anagrafica_ruolo", {})[nuovo_nome_ins.strip()] = nuovo_ruolo_ins
-            st.session_state.db.setdefault("anagrafica_nascita", {})[nuovo_nome_ins.strip()] = str(nuova_nascita_ins)
-            salvare_dati()
-            st.success(f"⚽ {nuovo_nome_ins.strip()} aggiunto alla rosa!")
-            st.rerun()
+    with st.container():
+        col_n, col_d, col_r = st.columns([2.5, 1.5, 1.5])
+        with col_n: nuovo_nome_ins = st.text_input("Nome e Cognome:", key="nuovo_ins_input")
+        with col_d: nuova_nascita_ins = st.date_input("Data di Nascita", datetime.date(2014, 1, 1))
+        with col_r: nuovo_ruolo_ins = st.selectbox("Ruolo", ["Portiere", "Difensore", "Centrocampista", "Attaccante", "Non definito"])
+        
+        if st.button("Inserisci in Squadra", type="primary"):
+            if nuovo_nome_ins.strip() != "" and nuovo_nome_ins.strip() not in st.session_state.db["ragazzi"]:
+                st.session_state.db["ragazzi"].append(nuovo_nome_ins.strip())
+                st.session_state.db.setdefault("anagrafica_ruolo", {})[nuovo_nome_ins.strip()] = nuovo_ruolo_ins
+                st.session_state.db.setdefault("anagrafica_nascita", {})[nuovo_nome_ins.strip()] = str(nuova_nascita_ins)
+                salvare_dati()
+                st.success(f"⚽ {nuovo_nome_ins.strip()} aggiunto alla rosa!")
+                st.rerun()
