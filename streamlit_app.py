@@ -24,8 +24,9 @@ def caricare_dati():
     if sheet:
         try:
             contenuto = sheet.acell('A1').value
-            if contenuto:
+            if contenido:
                 dati = json.loads(contenuto)
+                # Inizializza nuove chiavi se mancano
                 for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", 
                           "storico_numeri", "storico_gol", "storico_risultati", "anagrafica_ruolo", 
                           "anagrafica_nascita", "storico_capitano", "storico_vicecapitano"]:
@@ -54,7 +55,7 @@ def salvare_dati():
 
 st.set_page_config(page_title="MisterApp", layout="centered")
 
-# --- CSS PER MENU SMARTPHONE E COMPRESSIONE TABELLE ---
+# --- CSS AUTOMATICO PER OTTIMIZZAZIONE SPAZI MOBILE ---
 st.markdown("""
     <style>
     .card { 
@@ -65,7 +66,7 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.1);
     }
     
-    /* MENU INGRANDITO PER IL TOUCH */
+    /* MENU LATERALE INGRANDITO PER SMARTPHONE */
     [data-testid="stSidebar"] div[role="radiogroup"] label {
         padding: 18px 20px !important;
         margin-bottom: 12px !important;
@@ -79,46 +80,48 @@ st.markdown("""
         font-weight: bold !important;
         color: var(--text-color) !important;
     }
-    
-    /* COMPRESSIONE GLOBALE COLONNE (Toglie margini e spazi) */
-    [data-testid="column"] {
-        padding: 0 3px !important; 
+
+    /* TRUCCO CSS: COMPRIME SOLO I BLOCCHI A 5 COLONNE (ELENCO ROSA E INSERIMENTO FORMAZIONE) */
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) {
+        gap: 2px !important; 
+        margin-bottom: -6px !important; /* Avvicina verticalmente le righe della tabella */
     }
-    [data-testid="stHorizontalBlock"] {
-        gap: 0px !important; 
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) div[data-testid="column"] {
+        padding: 0 2px !important;
     }
 
-    /* REGOLE SPECIFICHE PER SMARTPHONE */
     @media (max-width: 768px) {
-        [data-testid="stHorizontalBlock"] {
+        /* Blocca l'andata a capo delle colonne solo nelle tabelle a 5 colonne */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) {
+            flex-direction: row !important;
             flex-wrap: nowrap !important;
+            align-items: center !important;
         }
-        /* Testi rimpiccioliti per non sbordare */
-        .stMarkdown p {
-            font-size: 12px !important;
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) div[data-testid="column"] {
+            width: auto !important;
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+        }
+        /* Testi più compatti nelle tabelle per non farli uscire dallo schermo */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) .stMarkdown p {
+            font-size: 13px !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
-            margin-bottom: 0 !important;
         }
-        /* Celle N° e Gol strizzate al massimo */
-        .stTextInput input, .stNumberInput input {
+        /* Celle dei Numeri e dei Gol rimpicciolite stile Excel */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) input {
             font-size: 12px !important;
-            padding: 0 2px !important;
-            height: 30px !important;
-            min-height: 30px !important;
+            padding: 0px !important;
+            height: 28px !important;
             text-align: center !important;
         }
-        /* Bottoni modificati per essere piccoli quadrati */
-        .stButton button {
+        /* Pulsanti ✏️ e 🗑️ piccolini e centrati */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) .stButton button {
+            height: 28px !important;
+            min-height: 28px !important;
+            width: 100% !important;
             padding: 0px !important;
-            min-height: 30px !important;
-            height: 30px !important;
-        }
-        /* Adatta le checkbox */
-        div[data-testid="stCheckbox"] label {
-            padding-left: 0 !important;
-            justify-content: center;
         }
     }
     </style>
@@ -475,7 +478,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             nuovi_numeri = {}
                             resoconto_gol = {}
                             
-                            # PROPORZIONI AGGRESSIVE PER FARCI STARE TUTTO
+                            # PROPORZIONI RIGIDE - MASSIMO SPAZIO A NOME/COGNOME, MINIMO AI NUMERI
                             c_n, c_nome, c_cognome, c_tit, c_g = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
                             c_n.markdown("**N°**")
                             c_nome.markdown("**Nome**")
@@ -707,7 +710,7 @@ elif menu == "📈 Statistiche Squadra":
         try:
             if "-" in s:
                 g_casa, g_trasf = map(int, s.split("-")[:2])
-                if luogo == "Casa":
+                if xaxis == "Casa":
                     gf = g_casa   # Gol USO UNITED
                     gs = g_trasf  # Gol Avversario
                 else:
@@ -839,18 +842,19 @@ elif menu == "🏃 Gestione Rosa":
     else:
         st.markdown("### 📋 Elenco Giocatori")
         
-        # Colonne Iper-Compatte per la Rosa
-        col_n, col_d, col_r, col_azioni = st.columns([3, 1.5, 1.5, 1.2])
-        col_n.markdown("**Nome**")
-        col_d.markdown("**Nascita**")
+        # RIGHE COMPATTE ADAPTED - 5 COLONNE ANCHE NELLA TESTATA PER ALLINEAMENTO PERFETTO
+        col_n, col_d, col_r, col_m, col_e = st.columns([2.5, 1.5, 1.5, 0.6, 0.6])
+        col_n.markdown("**Nome e Cognome**")
+        col_d.markdown("**Data Nascita**")
         col_r.markdown("**Ruolo**")
-        col_azioni.markdown("**Azioni**")
+        col_m.markdown("**Mod**")
+        col_e.markdown("**Eli**")
         st.write("---")
         
         for i, ragazzo in enumerate(list(st.session_state.db["ragazzi"])):
             if st.session_state.edit_mode == i:
                 st.markdown(f"**✏️ Stai modificando: {ragazzo}**")
-                c_name, c_date, c_role = st.columns([3, 1.5, 1.5])
+                c_name, c_date, c_role = st.columns([2.5, 1.5, 1.5])
                 with c_name: 
                     nuovo_nome_mod = st.text_input("Nome", value=ragazzo, key=f"edit_input_{i}", label_visibility="collapsed")
                 
@@ -884,9 +888,9 @@ elif menu == "🏃 Gestione Rosa":
                                     titolari_list.remove(ragazzo)
                                     titolari_list.append(nuovo_nome_mod)
                             for ev_id, numeri_dict in st.session_state.db["storico_numeri"].items():
-                                if ragazzo in numeri_dict: numeri_dict[nuovo_nome_mod] = numeri_dict.pop(ragazzo)
+                                if numeri_dict and ragazzo in numeri_dict: numeri_dict[nuovo_nome_mod] = numeri_dict.pop(ragazzo)
                             for ev_id, gol_dict in st.session_state.db["storico_gol"].items():
-                                if ragazzo in gol_dict: gol_dict[nuovo_nome_mod] = gol_dict.pop(ragazzo)
+                                if gol_dict and ragazzo in gol_dict: gol_dict[nuovo_nome_mod] = gol_dict.pop(ragazzo)
                             
                             if ragazzo in st.session_state.db.get("anagrafica_ruolo", {}):
                                 st.session_state.db["anagrafica_ruolo"].pop(ragazzo)
@@ -909,20 +913,21 @@ elif menu == "🏃 Gestione Rosa":
                 nascita_val = st.session_state.db.get("anagrafica_nascita", {}).get(ragazzo, "-")
                 if nascita_val != "-":
                     try:
-                        nascita_val = datetime.datetime.strptime(nascita_val, "%Y-%m-%d").strftime("%d/%m/%y") # formato corto
+                        nascita_val = datetime.datetime.strptime(nascita_val, "%Y-%m-%d").strftime("%d/%m/%y")
                     except:
                         pass
                 
-                c_n, c_d, c_r, c_mod, c_del = st.columns([3, 1.5, 1.5, 0.6, 0.6])
+                # BLOCCO A 5 COLONNE COMPRESSO AUTOMATICAMENTE DAL CSS
+                c_n, c_d, c_r, c_mod, c_del = st.columns([2.5, 1.5, 1.5, 0.6, 0.6])
                 c_n.write(f"**{ragazzo}**")
                 c_d.write(nascita_val)
                 c_r.write(ruolo_val)
                 with c_mod:
-                    if st.button("✏️", key=f"edit_btn_{i}", help="Modifica Giocatore"):
+                    if st.button("✏️", key=f"edit_btn_{i}", help="Modifica"):
                         st.session_state.edit_mode = i
                         st.rerun()
                 with c_del:
-                    if st.button("🗑️", key=f"del_btn_{i}", help="Elimina Giocatore"):
+                    if st.button("🗑️", key=f"del_btn_{i}", help="Elimina"):
                         st.session_state.db["ragazzi"].remove(ragazzo)
                         if ragazzo in st.session_state.db.get("anagrafica_ruolo", {}): del st.session_state.db["anagrafica_ruolo"][ragazzo]
                         if ragazzo in st.session_state.db.get("anagrafica_nascita", {}): del st.session_state.db["anagrafica_nascita"][ragazzo]
@@ -932,7 +937,7 @@ elif menu == "🏃 Gestione Rosa":
                     
     st.subheader("➕ Aggiungi un nuovo giocatore")
     with st.container():
-        col_n, col_d, col_r = st.columns([3, 1.5, 1.5])
+        col_n, col_d, col_r = st.columns([2.5, 1.5, 1.5])
         with col_n: nuovo_nome_ins = st.text_input("Nome e Cognome:", key="nuovo_ins_input")
         with col_d: nuova_nascita_ins = st.date_input("Data di Nascita", datetime.date(2014, 1, 1))
         with col_r: nuovo_ruolo_ins = st.selectbox("Ruolo", ["Portiere", "Difensore", "Centrocampista", "Attaccante", "Non definito"])
