@@ -55,21 +55,20 @@ def salvare_dati():
 
 st.set_page_config(page_title="MisterApp", layout="centered")
 
-# --- CSS PER MENU SMARTPHONE E DESIGN ---
+# --- CSS PER MENU SMARTPHONE E DESIGN TABELLARE ---
 st.markdown("""
     <style>
     .card { 
         background-color: var(--secondary-background-color); 
-        color: var(--text-color);
-        border-radius: 15px; 
-        padding: 20px; 
+        border-radius: 15px; padding: 20px; 
         box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
         margin-bottom: 20px; 
         border: 1px solid rgba(255,255,255,0.1);
     }
     
+    /* VOCI DEL MENU INGRANDITE PER IL TOUCH */
     [data-testid="stSidebar"] div[role="radiogroup"] label {
-        padding: 16px 20px !important;
+        padding: 18px 20px !important;
         margin-bottom: 12px !important;
         background-color: var(--secondary-background-color);
         border-radius: 12px;
@@ -77,12 +76,47 @@ st.markdown("""
         cursor: pointer;
     }
     [data-testid="stSidebar"] div[role="radiogroup"] label p {
-        font-size: 20px !important;
-        font-weight: 700 !important;
+        font-size: 22px !important;
+        font-weight: bold !important;
         color: var(--text-color) !important;
     }
     [data-testid="stSidebar"] div[role="radiogroup"] label:active {
         opacity: 0.7;
+    }
+
+    /* FORZATURA DELLE RIGHE IN ORIZZONTALE SU SMARTPHONE (evita l'andata a capo) */
+    @media (max-width: 768px) {
+        [data-testid="stHorizontalBlock"] {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            overflow-x: auto !important; /* Aggiunge uno scroll orizzontale invisibile se serve */
+        }
+        [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+            width: auto !important;
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+            padding: 0 3px !important;
+        }
+        /* Compressione dei testi per farci stare tutto su una riga */
+        .stMarkdown p {
+            font-size: 13px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            margin-bottom: 0 !important;
+        }
+        /* Compressione dei box di input */
+        .stTextInput input, .stNumberInput input {
+            font-size: 13px !important;
+            padding: 4px !important;
+            height: 32px !important;
+            min-height: 32px !important;
+            text-align: center !important;
+        }
+        /* Regolazione checkbox */
+        .stCheckbox label { padding-left: 0 !important; }
+        .stCheckbox p { font-size: 13px !important; margin-left: 5px !important; }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -220,7 +254,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                     mod_data = st.date_input("Data", curr_date, key=f"mod_dp_{ev['id']}")
                     mod_avv = st.text_input("Avversario", value=ev.get("avversario", ""), key=f"mod_avv_{ev['id']}")
                     mod_luogo = st.selectbox("Luogo", ["Casa", "Trasferta"], index=0 if ev.get("luogo", "Casa")=="Casa" else 1, key=f"mod_lu_{ev['id']}")
-                    
                     if mod_luogo == "Trasferta":
                         mod_indirizzo = st.text_input("Indirizzo del campo", value=ev.get("indirizzo", ""), key=f"mod_ind_{ev['id']}")
                     else:
@@ -439,8 +472,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                             nuovi_numeri = {}
                             resoconto_gol = {}
                             
-                            # Intestazioni Formazione
-                            c_n, c_nome, c_cognome, c_tit, c_g = st.columns([1, 2, 2, 1, 1])
+                            # Intestazioni Formazione in UI
+                            c_n, c_nome, c_cognome, c_tit, c_g = st.columns([1, 2.5, 2.5, 1, 1])
                             c_n.markdown("**N°**")
                             c_nome.markdown("**Nome**")
                             c_cognome.markdown("**Cognome**")
@@ -452,7 +485,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 nome_str = parts[0]
                                 cogn_str = parts[1] if len(parts) > 1 else ""
                                 
-                                col_num, col_nome, col_cognome, col_tit, col_g = st.columns([1, 2, 2, 1, 1])
+                                col_num, col_nome, col_cognome, col_tit, col_g = st.columns([1, 2.5, 2.5, 1, 1])
                                 with col_num:
                                     num_prec = numeri_salvati.get(c, "")
                                     num = st.text_input("N°", value=num_prec, key=f"num_{c}_{ev['id']}", label_visibility="collapsed")
@@ -842,8 +875,6 @@ elif menu == "🏃 Gestione Rosa":
                             nome_finale = nuovo_nome_mod
                             for ev_id, appello in st.session_state.db["storico_presenze"].items():
                                 if ragazzo in appello: appello[nuovo_nome_mod] = appello.pop(ragazzo)
-                            for ev_id, min_dict in st.session_state.db["storico_minutaggio"].items():
-                                if ragazzo in min_dict: min_dict[nuovo_nome_mod] = min_dict.pop(ragazzo)
                             for ev_id, titolari_list in st.session_state.db["storico_titolari"].items():
                                 if ragazzo in titolari_list: 
                                     titolari_list.remove(ragazzo)
