@@ -89,34 +89,44 @@ st.markdown("""
         [data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
+            gap: 2px !important; /* Rimuove lo spazio vuoto tra le colonne */
             align-items: center !important;
-            overflow-x: auto !important; /* Aggiunge uno scroll orizzontale invisibile se serve */
         }
-        [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+        [data-testid="column"] {
             width: auto !important;
             flex: 1 1 0% !important;
             min-width: 0 !important;
-            padding: 0 3px !important;
+            padding: 0 1px !important;
         }
         /* Compressione dei testi per farci stare tutto su una riga */
         .stMarkdown p {
-            font-size: 13px !important;
+            font-size: 11px !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
             margin-bottom: 0 !important;
         }
-        /* Compressione dei box di input */
+        /* Compressione dei box di input per i Numeri e i Gol */
+        div[data-testid="stTextInput"] div, div[data-testid="stNumberInput"] div {
+            min-width: 25px !important;
+        }
         .stTextInput input, .stNumberInput input {
-            font-size: 13px !important;
-            padding: 4px !important;
-            height: 32px !important;
-            min-height: 32px !important;
+            font-size: 12px !important;
+            padding: 2px !important;
+            height: 28px !important;
+            min-height: 28px !important;
             text-align: center !important;
         }
-        /* Regolazione checkbox */
-        .stCheckbox label { padding-left: 0 !important; }
-        .stCheckbox p { font-size: 13px !important; margin-left: 5px !important; }
+        /* Bottoni delle azioni più piccoli */
+        .stButton button {
+            padding: 2px 4px !important;
+            min-height: 28px !important;
+        }
+        /* Ottimizzazione del blocco checkbox */
+        div[data-testid="stCheckbox"] {
+            display: flex;
+            justify-content: center;
+        }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -472,8 +482,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                             nuovi_numeri = {}
                             resoconto_gol = {}
                             
-                            # Intestazioni Formazione in UI
-                            c_n, c_nome, c_cognome, c_tit, c_g = st.columns([1, 2.5, 2.5, 1, 1])
+                            # Intestazioni compatte per Formazione in UI
+                            c_n, c_nome, c_cognome, c_tit, c_g = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
                             c_n.markdown("**N°**")
                             c_nome.markdown("**Nome**")
                             c_cognome.markdown("**Cognome**")
@@ -485,7 +495,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 nome_str = parts[0]
                                 cogn_str = parts[1] if len(parts) > 1 else ""
                                 
-                                col_num, col_nome, col_cognome, col_tit, col_g = st.columns([1, 2.5, 2.5, 1, 1])
+                                col_num, col_nome, col_cognome, col_tit, col_g = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
                                 with col_num:
                                     num_prec = numeri_salvati.get(c, "")
                                     num = st.text_input("N°", value=num_prec, key=f"num_{c}_{ev['id']}", label_visibility="collapsed")
@@ -832,11 +842,12 @@ elif menu == "🏃 Gestione Rosa":
     
     st.subheader("I tuoi giocatori attuali:")
     if not st.session_state.db["ragazzi"]: 
-        st.warning("La rosa è vuota!")
+        st.warning("La Rosa è vuota!")
     else:
         st.markdown("### 📋 Elenco Giocatori")
         
-        col_n, col_d, col_r, col_azioni = st.columns([2.5, 1.5, 1.5, 1.5])
+        # Colonne compatte per la Rosa
+        col_n, col_d, col_r, col_azioni = st.columns([2.5, 1.5, 1.5, 1.2])
         col_n.markdown("**Nome e Cognome**")
         col_d.markdown("**Data Nascita**")
         col_r.markdown("**Ruolo**")
@@ -909,7 +920,7 @@ elif menu == "🏃 Gestione Rosa":
                     except:
                         pass
                 
-                c_n, c_d, c_r, c_mod, c_del = st.columns([2.5, 1.5, 1.5, 0.75, 0.75])
+                c_n, c_d, c_r, c_mod, c_del = st.columns([2.5, 1.5, 1.5, 0.6, 0.6])
                 c_n.write(f"**{ragazzo}**")
                 c_d.write(nascita_val)
                 c_r.write(ruolo_val)
