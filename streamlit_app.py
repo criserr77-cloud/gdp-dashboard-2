@@ -158,7 +158,6 @@ if menu == "🔵 Calendario Allenamenti":
                         if st.button("🗑️ Elimina", key=f"del_ev_{ev['id']}"):
                             st.session_state.db["eventi"] = [e for e in st.session_state.db["eventi"] if e["id"] != ev["id"]]
                             if ev["id"] in st.session_state.db["storico_presenze"]: del st.session_state.db["storico_presenze"][ev["id"]]
-                            if ev["id"] in st.session_state.db["storico_minutaggio"]: del st.session_state.db["storico_minutaggio"][ev["id"]]
                             salvare_dati()
                             st.rerun()
                     
@@ -269,7 +268,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                         if st.button("🗑️ Elimina Gara", key=f"del_evp_{ev['id']}"):
                             st.session_state.db["eventi"] = [e for e in st.session_state.db["eventi"] if e["id"] != ev["id"]]
                             if ev["id"] in st.session_state.db["storico_presenze"]: del st.session_state.db["storico_presenze"][ev["id"]]
-                            if ev["id"] in st.session_state.db["storico_minutaggio"]: del st.session_state.db["storico_minutaggio"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_titolari"]: del st.session_state.db["storico_titolari"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_numeri"]: del st.session_state.db["storico_numeri"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_gol"]: del st.session_state.db["storico_gol"][ev["id"]]
@@ -282,7 +280,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                     st.write("---")
                     
                     appello_evento = st.session_state.db["storico_presenze"].get(ev["id"], {})
-                    minutaggio_evento = st.session_state.db["storico_minutaggio"].get(ev["id"], {})
                     gol_evento = st.session_state.db["storico_gol"].get(ev["id"], {})
                     ris_evento = st.session_state.db["storico_risultati"].get(ev["id"], {})
                     titolari_evento = st.session_state.db["storico_titolari"].get(ev["id"], [])
@@ -440,16 +437,14 @@ elif menu == "🟢 Calendario e Convocazioni":
                             
                             nuovi_titolari = []
                             nuovi_numeri = {}
-                            resoconto_minuti = {}
                             resoconto_gol = {}
                             
-                            # Intestazioni delle colonne Formazione
-                            c_n, c_nome, c_cognome, c_tit, c_min, c_g = st.columns([1, 1.5, 1.5, 1, 1, 1])
+                            # Intestazioni Formazione (senza minuti)
+                            c_n, c_nome, c_cognome, c_tit, c_g = st.columns([1, 2, 2, 1, 1])
                             c_n.markdown("**N°**")
                             c_nome.markdown("**Nome**")
                             c_cognome.markdown("**Cognome**")
                             c_tit.markdown("**Tit.**")
-                            c_min.markdown("**Min.**")
                             c_g.markdown("**Gol**")
                             
                             for c in convocati_list:
@@ -457,7 +452,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 nome_str = parts[0]
                                 cogn_str = parts[1] if len(parts) > 1 else ""
                                 
-                                col_num, col_nome, col_cognome, col_tit, col_min, col_g = st.columns([1, 1.5, 1.5, 1, 1, 1])
+                                col_num, col_nome, col_cognome, col_tit, col_g = st.columns([1, 2, 2, 1, 1])
                                 with col_num:
                                     num_prec = numeri_salvati.get(c, "")
                                     num = st.text_input("N°", value=num_prec, key=f"num_{c}_{ev['id']}", label_visibility="collapsed")
@@ -469,10 +464,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 with col_tit:
                                     is_tit = st.checkbox("Tit", value=(c in titolari_salvati), key=f"tit_{c}_{ev['id']}", label_visibility="collapsed")
                                     if is_tit: nuovi_titolari.append(c)
-                                with col_min:
-                                    min_prec = minutaggio_evento.get(c, 0)
-                                    minuti = st.number_input("Min", min_value=0, max_value=150, value=min_prec, step=1, label_visibility="collapsed", key=f"m_{c}_{ev['id']}")
-                                    resoconto_minuti[c] = minuti
                                 with col_g:
                                     gol_prec = gol_evento.get(c, 0)
                                     gol = st.number_input("Gol", min_value=0, max_value=50, value=gol_prec, step=1, label_visibility="collapsed", key=f"g_{c}_{ev['id']}")
@@ -495,7 +486,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 st.session_state.db["storico_titolari"][ev["id"]] = nuovi_titolari
                                 st.session_state.db["storico_numeri"][ev["id"]] = nuovi_numeri
                                 st.session_state.db["storico_risultati"][ev["id"]] = {"t1": ris_t1, "t2": ris_t2, "t3": ris_t3}
-                                st.session_state.db["storico_minutaggio"][ev["id"]] = resoconto_minuti
                                 st.session_state.db["storico_gol"][ev["id"]] = resoconto_gol
                                 st.session_state.db.setdefault("storico_capitano", {})[ev["id"]] = input_capitano if input_capitano != "Nessuno" else ""
                                 st.session_state.db.setdefault("storico_vicecapitano", {})[ev["id"]] = input_vice if input_vice != "Nessuno" else ""
@@ -640,10 +630,9 @@ elif menu == "🏆 Statistiche Giocatori":
                         non_convocati += 1
             
             pct_conv = (convocati / totale_gare) * 100 if totale_gare > 0 else 0.00
-            min_tot = 0
+            pct_tit = (presenze_titolare / totale_gare) * 100 if totale_gare > 0 else 0.00
             gol_tot = 0
             for ev_id in id_gare:
-                min_tot += st.session_state.db["storico_minutaggio"].get(str(ev_id), {}).get(ragazzo, 0)
                 gol_tot += st.session_state.db["storico_gol"].get(str(ev_id), {}).get(ragazzo, 0)
 
             tabella_gare.append({
@@ -652,15 +641,15 @@ elif menu == "🏆 Statistiche Giocatori":
                 "🔴 Non Conv.": non_convocati,
                 "👕 Titolare": presenze_titolare,
                 "📈 % Conv.": f"{pct_conv:.2f}%",
-                "⏱️ Min.": min_tot,
+                "🏅 % Titolare": f"{pct_tit:.2f}%",
                 "⚽ Gol Fatti": gol_tot
             })
         st.table(tabella_gare)
         
         if tabella_gare:
-            html_giocatori = "<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Giocatori</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: #f0f0f0;'>Giocatore</th><th style='padding:8px; background-color: #f0f0f0;'>🟢 Convocato</th><th style='padding:8px; background-color: #f0f0f0;'>🔴 Non Conv.</th><th style='padding:8px; background-color: #f0f0f0;'>👕 Titolare</th><th style='padding:8px; background-color: #f0f0f0;'>📈 % Conv.</th><th style='padding:8px; background-color: #f0f0f0;'>⏱️ Min.</th><th style='padding:8px; background-color: #f0f0f0;'>⚽ Gol Fatti</th></tr>"
+            html_giocatori = "<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Giocatori</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: #f0f0f0;'>Giocatore</th><th style='padding:8px; background-color: #f0f0f0;'>🟢 Convocato</th><th style='padding:8px; background-color: #f0f0f0;'>🔴 Non Conv.</th><th style='padding:8px; background-color: #f0f0f0;'>👕 Titolare</th><th style='padding:8px; background-color: #f0f0f0;'>📈 % Conv.</th><th style='padding:8px; background-color: #f0f0f0;'>🏅 % Titolare</th><th style='padding:8px; background-color: #f0f0f0;'>⚽ Gol Fatti</th></tr>"
             for row in tabella_gare:
-                html_giocatori += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Convocato']}</td><td style='padding:8px;'>{row['🔴 Non Conv.']}</td><td style='padding:8px;'>{row['👕 Titolare']}</td><td style='padding:8px;'>{row['📈 % Conv.']}</td><td style='padding:8px;'>{row['⏱️ Min.']}</td><td style='padding:8px;'>{row['⚽ Gol Fatti']}</td></tr>"
+                html_giocatori += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Convocato']}</td><td style='padding:8px;'>{row['🔴 Non Conv.']}</td><td style='padding:8px;'>{row['👕 Titolare']}</td><td style='padding:8px;'>{row['📈 % Conv.']}</td><td style='padding:8px;'>{row['🏅 % Titolare']}</td><td style='padding:8px;'>{row['⚽ Gol Fatti']}</td></tr>"
             html_giocatori += "</table></body></html>"
             
             st.download_button(
