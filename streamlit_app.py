@@ -24,7 +24,7 @@ def caricare_dati():
     if sheet:
         try:
             contenuto = sheet.acell('A1').value
-            if contenido:
+            if contenuto:  # CORRETTO QUI! Era contenido per errore.
                 dati = json.loads(contenuto)
                 # Inizializza nuove chiavi se mancano
                 for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", 
@@ -84,14 +84,13 @@ st.markdown("""
     /* TRUCCO CSS: COMPRIME SOLO I BLOCCHI A 5 COLONNE (ELENCO ROSA E INSERIMENTO FORMAZIONE) */
     div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) {
         gap: 2px !important; 
-        margin-bottom: -6px !important; /* Avvicina verticalmente le righe della tabella */
+        margin-bottom: -6px !important; 
     }
     div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) div[data-testid="column"] {
         padding: 0 2px !important;
     }
 
     @media (max-width: 768px) {
-        /* Blocca l'andata a capo delle colonne solo nelle tabelle a 5 colonne */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
@@ -102,21 +101,18 @@ st.markdown("""
             flex: 1 1 0% !important;
             min-width: 0 !important;
         }
-        /* Testi più compatti nelle tabelle per non farli uscire dallo schermo */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) .stMarkdown p {
             font-size: 13px !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
         }
-        /* Celle dei Numeri e dei Gol rimpicciolite stile Excel */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) input {
             font-size: 12px !important;
             padding: 0px !important;
             height: 28px !important;
             text-align: center !important;
         }
-        /* Pulsanti ✏️ e 🗑️ piccolini e centrati */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) .stButton button {
             height: 28px !important;
             min-height: 28px !important;
@@ -478,7 +474,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             nuovi_numeri = {}
                             resoconto_gol = {}
                             
-                            # PROPORZIONI RIGIDE - MASSIMO SPAZIO A NOME/COGNOME, MINIMO AI NUMERI
+                            # Intestazioni Formazione in UI
                             c_n, c_nome, c_cognome, c_tit, c_g = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
                             c_n.markdown("**N°**")
                             c_nome.markdown("**Nome**")
@@ -710,7 +706,7 @@ elif menu == "📈 Statistiche Squadra":
         try:
             if "-" in s:
                 g_casa, g_trasf = map(int, s.split("-")[:2])
-                if xaxis == "Casa":
+                if luogo == "Casa":
                     gf = g_casa   # Gol USO UNITED
                     gs = g_trasf  # Gol Avversario
                 else:
@@ -842,10 +838,9 @@ elif menu == "🏃 Gestione Rosa":
     else:
         st.markdown("### 📋 Elenco Giocatori")
         
-        # RIGHE COMPATTE ADAPTED - 5 COLONNE ANCHE NELLA TESTATA PER ALLINEAMENTO PERFETTO
         col_n, col_d, col_r, col_m, col_e = st.columns([2.5, 1.5, 1.5, 0.6, 0.6])
-        col_n.markdown("**Nome e Cognome**")
-        col_d.markdown("**Data Nascita**")
+        col_n.markdown("**Nome**")
+        col_d.markdown("**Nascita**")
         col_r.markdown("**Ruolo**")
         col_m.markdown("**Mod**")
         col_e.markdown("**Eli**")
@@ -917,7 +912,6 @@ elif menu == "🏃 Gestione Rosa":
                     except:
                         pass
                 
-                # BLOCCO A 5 COLONNE COMPRESSO AUTOMATICAMENTE DAL CSS
                 c_n, c_d, c_r, c_mod, c_del = st.columns([2.5, 1.5, 1.5, 0.6, 0.6])
                 c_n.write(f"**{ragazzo}**")
                 c_d.write(nascita_val)
