@@ -24,7 +24,7 @@ def caricare_dati():
     if sheet:
         try:
             contenuto = sheet.acell('A1').value
-            if contenuto:  # CORRETTO QUI! Era contenido per errore.
+            if contenuto:  
                 dati = json.loads(contenuto)
                 # Inizializza nuove chiavi se mancano
                 for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", 
@@ -83,11 +83,11 @@ st.markdown("""
 
     /* TRUCCO CSS: COMPRIME SOLO I BLOCCHI A 5 COLONNE (ELENCO ROSA E INSERIMENTO FORMAZIONE) */
     div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) {
-        gap: 2px !important; 
-        margin-bottom: -6px !important; 
+        gap: 4px !important; 
+        margin-bottom: -4px !important; 
     }
     div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) div[data-testid="column"] {
-        padding: 0 2px !important;
+        padding: 0 1px !important;
     }
 
     @media (max-width: 768px) {
@@ -96,11 +96,30 @@ st.markdown("""
             flex-wrap: nowrap !important;
             align-items: center !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) div[data-testid="column"] {
-            width: auto !important;
-            flex: 1 1 0% !important;
+        /* Assegnazione larghezze fisse/proporzionali alle colonne su Mobile */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) div[data-testid="column"]:nth-child(1) {
+            width: 45px !important; /* Colonna N° stretta */
+            flex: none !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) div[data-testid="column"]:nth-child(2) {
+            flex: 2 1 0% !important; /* Nome */
             min-width: 0 !important;
         }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) div[data-testid="column"]:nth-child(3) {
+            flex: 2 1 0% !important; /* Cognome */
+            min-width: 0 !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) div[data-testid="column"]:nth-child(4) {
+            width: 40px !important; /* Colonna Titolare checkbox */
+            flex: none !important;
+            text-align: center !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) div[data-testid="column"]:nth-child(5) {
+            width: 45px !important; /* Colonna Gol stretta per 1 cifra */
+            flex: none !important;
+        }
+        
+        /* Ottimizzazione testi e campi input della tabella formazione */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) .stMarkdown p {
             font-size: 13px !important;
             white-space: nowrap !important;
@@ -108,16 +127,16 @@ st.markdown("""
             text-overflow: ellipsis !important;
         }
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) input {
-            font-size: 12px !important;
-            padding: 0px !important;
-            height: 28px !important;
+            font-size: 13px !important;
+            padding: 0px 2px !important;
+            height: 30px !important;
             text-align: center !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) .stButton button {
-            height: 28px !important;
-            min-height: 28px !important;
-            width: 100% !important;
-            padding: 0px !important;
+        /* Centratura ottica dei checkbox su mobile */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) .stCheckbox {
+            display: flex;
+            justify-content: center;
+            margin-top: -4px;
         }
     }
     </style>
@@ -154,7 +173,7 @@ menu = st.sidebar.radio("Navigazione", [
 if menu == "🔵 Calendario Allenamenti":
     st.header("🔵 Calendario e Presenze Allenamenti")
     
-    st.subheader("I tuoi Allenamenti:")
+    st.subheader("I tuoi allenamenti:")
     eventi_allenamento = [ev for ev in st.session_state.db["eventi"] if ev["tipo"] == "Allenamento"]
     
     if not eventi_allenamento:
@@ -474,7 +493,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             nuovi_numeri = {}
                             resoconto_gol = {}
                             
-                            # Intestazioni Formazione in UI
+                            # NUOVA INTESTAZIONE TABELLA COMPATTA (ORDINE: N°, Nome, Cognome, Tit., Gol)
                             c_n, c_nome, c_cognome, c_tit, c_g = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
                             c_n.markdown("**N°**")
                             c_nome.markdown("**Nome**")
@@ -487,21 +506,28 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 nome_str = parts[0]
                                 cogn_str = parts[1] if len(parts) > 1 else ""
                                 
+                                # RIGHE FORMATO TABELLA ORIZZONTALE CON RIGIDI LIMITI DI CARATTERI
                                 col_num, col_nome, col_cognome, col_tit, col_g = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
+                                
                                 with col_num:
-                                    num_prec = numeri_salvati.get(c, "")
-                                    num = st.text_input("N°", value=num_prec, key=f"num_{c}_{ev['id']}", label_visibility="collapsed")
+                                    num_prec = str(numeri_salvati.get(c, ""))
+                                    num = st.text_input("N°", value=num_prec, max_chars=2, key=f"num_{c}_{ev['id']}", label_visibility="collapsed")
                                     nuovi_numeri[c] = num
+                                    
                                 with col_nome:
                                     st.write(nome_str)
+                                    
                                 with col_cognome:
                                     st.write(cogn_str)
+                                    
                                 with col_tit:
                                     is_tit = st.checkbox("Tit", value=(c in titolari_salvati), key=f"tit_{c}_{ev['id']}", label_visibility="collapsed")
                                     if is_tit: nuovi_titolari.append(c)
+                                    
                                 with col_g:
                                     gol_prec = gol_evento.get(c, 0)
-                                    gol = st.number_input("Gol", min_value=0, max_value=50, value=gol_prec, step=1, label_visibility="collapsed", key=f"g_{c}_{ev['id']}")
+                                    # Limitato a un massimo di 9 gol per ospitare una sola cifra come richiesto
+                                    gol = st.number_input("Gol", min_value=0, max_value=9, value=int(gol_prec), step=1, label_visibility="collapsed", key=f"g_{c}_{ev['id']}")
                                     resoconto_gol[c] = gol
                             
                             st.write("---")
@@ -707,15 +733,15 @@ elif menu == "📈 Statistiche Squadra":
             if "-" in s:
                 g_casa, g_trasf = map(int, s.split("-")[:2])
                 if luogo == "Casa":
-                    gf = g_casa   # Gol USO UNITED
-                    gs = g_trasf  # Gol Avversario
+                    gf = g_casa   
+                    gs = g_trasf  
                 else:
-                    gf = g_trasf  # Gol USO UNITED
-                    gs = g_casa   # Gol Avversario
+                    gf = g_trasf  
+                    gs = g_casa   
                 
-                if gf > gs: return 1, 0, gf, gs    # USO vince il tempo
-                elif gf == gs: return 1, 1, gf, gs # Pareggio nel tempo (1 punto a testa)
-                else: return 0, 1, gf, gs          # Avversario vince il tempo
+                if gf > gs: return 1, 0, gf, gs    
+                elif gf == gs: return 1, 1, gf, gs 
+                else: return 0, 1, gf, gs          
         except:
             pass
         return 0, 0, 0, 0
