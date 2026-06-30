@@ -24,7 +24,7 @@ def caricare_dati():
     if sheet:
         try:
             contenuto = sheet.acell('A1').value
-            if contenuto:  
+            if contenuto:
                 dati = json.loads(contenuto)
                 # Inizializza nuove chiavi se mancano
                 for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", 
@@ -115,11 +115,11 @@ st.markdown("""
             text-align: center !important;
         }
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) div[data-testid="column"]:nth-child(5) {
-            width: 45px !important; /* Colonna Gol stretta per 1 cifra */
+            width: 45px !important; /* Colonna Gol stretta */
             flex: none !important;
         }
         
-        /* Ottimizzazione testi e campi input della tabella formazione */
+        /* Ottimizzazione testi e campi input della tabella */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) .stMarkdown p {
             font-size: 13px !important;
             white-space: nowrap !important;
@@ -173,7 +173,7 @@ menu = st.sidebar.radio("Navigazione", [
 if menu == "🔵 Calendario Allenamenti":
     st.header("🔵 Calendario e Presenze Allenamenti")
     
-    st.subheader("I tuoi allenamenti:")
+    st.subheader("I tuoi Allenamenti:")
     eventi_allenamento = [ev for ev in st.session_state.db["eventi"] if ev["tipo"] == "Allenamento"]
     
     if not eventi_allenamento:
@@ -493,7 +493,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             nuovi_numeri = {}
                             resoconto_gol = {}
                             
-                            # NUOVA INTESTAZIONE TABELLA COMPATTA (ORDINE: N°, Nome, Cognome, Tit., Gol)
+                            # Intestazioni Formazione in UI
                             c_n, c_nome, c_cognome, c_tit, c_g = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
                             c_n.markdown("**N°**")
                             c_nome.markdown("**Nome**")
@@ -506,7 +506,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 nome_str = parts[0]
                                 cogn_str = parts[1] if len(parts) > 1 else ""
                                 
-                                # RIGHE FORMATO TABELLA ORIZZONTALE CON RIGIDI LIMITI DI CARATTERI
+                                # BLOCCO A 5 COLONNE INTERCETTATO DAL CSS PER COMPRESSIONE MOBILE
                                 col_num, col_nome, col_cognome, col_tit, col_g = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
                                 
                                 with col_num:
@@ -526,8 +526,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                                     
                                 with col_g:
                                     gol_prec = gol_evento.get(c, 0)
-                                    # Limitato a un massimo di 9 gol per ospitare una sola cifra come richiesto
-                                    gol = st.number_input("Gol", min_value=0, max_value=9, value=int(gol_prec), step=1, label_visibility="collapsed", key=f"g_{c}_{ev['id']}")
+                                    # Valore max riportato a 50 per gestire vecchi dati, la dimensione resta limitata dal CSS
+                                    gol = st.number_input("Gol", min_value=0, max_value=50, value=int(gol_prec), step=1, label_visibility="collapsed", key=f"g_{c}_{ev['id']}")
                                     resoconto_gol[c] = gol
                             
                             st.write("---")
@@ -864,6 +864,7 @@ elif menu == "🏃 Gestione Rosa":
     else:
         st.markdown("### 📋 Elenco Giocatori")
         
+        # BLOCCO A 5 COLONNE INTERCETTATO DAL CSS PER COMPRESSIONE MOBILE
         col_n, col_d, col_r, col_m, col_e = st.columns([2.5, 1.5, 1.5, 0.6, 0.6])
         col_n.markdown("**Nome**")
         col_d.markdown("**Nascita**")
@@ -934,10 +935,11 @@ elif menu == "🏃 Gestione Rosa":
                 nascita_val = st.session_state.db.get("anagrafica_nascita", {}).get(ragazzo, "-")
                 if nascita_val != "-":
                     try:
-                        nascita_val = datetime.datetime.strptime(nascita_val, "%Y-%m-%d").strftime("%d/%m/%y")
+                        nascita_val = datetime.datetime.strptime(nascita_val, "%Y-%m-%d").strftime("%d/%m/%Y")
                     except:
                         pass
                 
+                # BLOCCO A 5 COLONNE INTERCETTATO DAL CSS PER COMPRESSIONE MOBILE
                 c_n, c_d, c_r, c_mod, c_del = st.columns([2.5, 1.5, 1.5, 0.6, 0.6])
                 c_n.write(f"**{ragazzo}**")
                 c_d.write(nascita_val)
