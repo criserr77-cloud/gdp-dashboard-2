@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 import datetime
 import json
 import os
@@ -79,75 +80,6 @@ st.markdown("""
         font-size: 22px !important;
         font-weight: bold !important;
         color: var(--text-color) !important;
-    }
-
-    @media (max-width: 768px) {
-        /* 1. FORZATURA DEL CONTENITORE PADRE A FARE LA TABELLA ORIZZONTALE (Blocca la colonna verticale dello smartphone) */
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-            gap: 2px !important;
-            margin-bottom: -4px !important;
-        }
-
-        /* 2. FORZATURA LARGHEZZA DELLE SINGOLE CELLE SU MOBILE */
-        /* Cella 1: N° (Strettissima, max 2 cifre) */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) {
-            width: 14% !important; flex: 0 0 14% !important; min-width: 0 !important;
-        }
-        /* Cella 2: Nome */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(2) {
-            width: 28% !important; flex: 0 0 28% !important; min-width: 0 !important;
-        }
-        /* Cella 3: Cognome */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(3) {
-            width: 28% !important; flex: 0 0 28% !important; min-width: 0 !important;
-        }
-        /* Cella 4: Tit (Spunta) */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(4) {
-            width: 14% !important; flex: 0 0 14% !important; min-width: 0 !important;
-        }
-        /* Cella 5: Gol (Strettissima, max 1 cifra) */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(5) {
-            width: 16% !important; flex: 0 0 16% !important; min-width: 0 !important;
-        }
-
-        /* Rimozione di spazi interni vuoti di Streamlit */
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) div[data-testid="column"] {
-            padding: 0px !important;
-        }
-
-        /* Ottimizzazione dei testi interni alla tabella */
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) .stMarkdown p {
-            font-size: 13px !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-        }
-        
-        /* Centratura dei titoli N°, Tit, Gol */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) p,
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(4) p,
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(5) p {
-            text-align: center !important;
-        }
-
-        /* Trasformazione degli input in piccole celle compatte */
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) input {
-            font-size: 13px !important;
-            padding: 0px !important;
-            height: 32px !important;
-            text-align: center !important;
-        }
-
-        /* Allineamento perfetto del quadratino Checkbox */
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) .stCheckbox label {
-            padding-left: 0 !important;
-            justify-content: center !important;
-            margin-top: 4px !important;
-        }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -498,51 +430,58 @@ elif menu == "🟢 Calendario e Convocazioni":
                         else:
                             titolari_salvati = st.session_state.db["storico_titolari"].get(ev["id"], [])
                             numeri_salvati = st.session_state.db["storico_numeri"].get(ev["id"], {})
-                            
-                            nuovi_titolari = []
-                            nuovi_numeri = {}
-                            resoconto_gol = {}
-                            
-                            # Intestazioni Formazione in UI
-                            header_cols = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
-                            header_cols[0].markdown("**N°**")
-                            header_cols[1].markdown("**Nome**")
-                            header_cols[2].markdown("**Cognome**")
-                            header_cols[3].markdown("**Tit.**")
-                            header_cols[4].markdown("**Gol**")
-                            
+
+                            # --- Costruzione tabella dati (sostituisce il vecchio layout a colonne) ---
+                            righe_tabella = []
                             for c in convocati_list:
                                 parts = c.split(" ", 1)
                                 nome_str = parts[0]
                                 cogn_str = parts[1] if len(parts) > 1 else ""
-                                
-                                # RIGHE FORMAZIONE - 5 COLONNE
-                                row_cols = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
-                                
-                                with row_cols[0]:
-                                    num_prec = str(numeri_salvati.get(c, ""))
-                                    num = st.text_input("N°", value=num_prec, max_chars=2, key=f"num_{c}_{ev['id']}", label_visibility="collapsed")
-                                    nuovi_numeri[c] = num
-                                    
-                                with row_cols[1]:
-                                    st.write(nome_str)
-                                    
-                                with row_cols[2]:
-                                    st.write(cogn_str)
-                                    
-                                with row_cols[3]:
-                                    is_tit = st.checkbox("Tit", value=(c in titolari_salvati), key=f"tit_{c}_{ev['id']}", label_visibility="collapsed")
-                                    if is_tit: nuovi_titolari.append(c)
-                                    
-                                with row_cols[4]:
-                                    gol_prec = gol_evento.get(c, 0)
-                                    gol_str = st.text_input("Gol", value=str(int(gol_prec)), max_chars=1, key=f"g_{c}_{ev['id']}", label_visibility="collapsed")
-                                    try:
-                                        gol = int(gol_str) if gol_str.strip() != "" else 0
-                                    except ValueError:
-                                        gol = 0
-                                    resoconto_gol[c] = gol
-                            
+                                try:
+                                    num_prec = int(numeri_salvati.get(c, 0)) if str(numeri_salvati.get(c, "")).strip() != "" else 0
+                                except ValueError:
+                                    num_prec = 0
+                                try:
+                                    gol_prec = int(gol_evento.get(c, 0))
+                                except (ValueError, TypeError):
+                                    gol_prec = 0
+
+                                righe_tabella.append({
+                                    "Giocatore": c,
+                                    "N°": num_prec,
+                                    "Nome": nome_str,
+                                    "Cognome": cogn_str,
+                                    "Tit.": c in titolari_salvati,
+                                    "Gol": gol_prec,
+                                })
+
+                            df_formazione = pd.DataFrame(righe_tabella)
+
+                            st.caption("Tocca una cella per modificarla. La tabella si adatta automaticamente allo schermo, anche su smartphone.")
+
+                            df_edit = st.data_editor(
+                                df_formazione,
+                                key=f"data_editor_form_{ev['id']}",
+                                hide_index=True,
+                                use_container_width=True,
+                                column_order=["N°", "Nome", "Cognome", "Tit.", "Gol"],
+                                column_config={
+                                    "N°": st.column_config.NumberColumn("N°", min_value=0, max_value=99, step=1, width="small", format="%d"),
+                                    "Nome": st.column_config.TextColumn("Nome", disabled=True, width="medium"),
+                                    "Cognome": st.column_config.TextColumn("Cognome", disabled=True, width="medium"),
+                                    "Tit.": st.column_config.CheckboxColumn("Tit.", width="small"),
+                                    "Gol": st.column_config.NumberColumn("Gol", min_value=0, max_value=99, step=1, width="small", format="%d"),
+                                },
+                            )
+
+                            # Riallineo l'indice del giocatore alle righe restituite dal data_editor
+                            df_edit = df_edit.copy()
+                            df_edit["Giocatore"] = df_formazione["Giocatore"].values
+
+                            nuovi_titolari = df_edit.loc[df_edit["Tit."] == True, "Giocatore"].tolist()
+                            nuovi_numeri = {row["Giocatore"]: str(int(row["N°"])) for _, row in df_edit.iterrows()}
+                            resoconto_gol = {row["Giocatore"]: int(row["Gol"]) for _, row in df_edit.iterrows()}
+
                             st.write("---")
                             st.write("#### © Assegna Fasce")
                             opzioni_fasce = ["Nessuno"] + convocati_list
@@ -718,7 +657,7 @@ elif menu == "🏆 Statistiche Giocatori":
                 "🏅 % Titolare": f"{pct_tit:.2f}%",
                 "⚽ Gol Fatti": gol_tot
             })
-        st.table(tab_gare if 'tab_gare' in locals() else tabella_gare)
+        st.table(tabella_gare)
         
         if tabella_gare:
             html_giocatori = "<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Giocatori</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: #f0f0f0;'>Giocatore</th><th style='padding:8px; background-color: #f0f0f0;'>🟢 Convocato</th><th style='padding:8px; background-color: #f0f0f0;'>🔴 Non Conv.</th><th style='padding:8px; background-color: #f0f0f0;'>👕 Titolare</th><th style='padding:8px; background-color: #f0f0f0;'>📈 % Conv.</th><th style='padding:8px; background-color: #f0f0f0;'>🏅 % Titolare</th><th style='padding:8px; background-color: #f0f0f0;'>⚽ Gol Fatti</th></tr>"
