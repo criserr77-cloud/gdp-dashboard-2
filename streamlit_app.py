@@ -55,7 +55,7 @@ def salvare_dati():
 
 st.set_page_config(page_title="MisterApp", layout="centered")
 
-# --- CSS MIRATO E UNIVERSALE PER TABELLA FORMAZIONE SU MOBILE ---
+# --- CSS DEFINITIVO E BLOCCATO PER VISUALIZZAZIONE ORIZZONTALE SU MOBILE ---
 st.markdown("""
     <style>
     .card { 
@@ -66,7 +66,7 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.1);
     }
     
-    /* MENU LATERALE INGRANDITO PER SMARTPHONE */
+    /* MENU LATERALE RESPONSIVE ED INGRANDITO */
     [data-testid="stSidebar"] div[role="radiogroup"] label {
         padding: 18px 20px !important;
         margin-bottom: 12px !important;
@@ -82,68 +82,71 @@ st.markdown("""
     }
 
     @media (max-width: 768px) {
-        /* TRUCCO INFALLIBILE: Identifica ESATTAMENTE la riga Formazione (che è l'unica nel codice ad avere 5 colonne precise) */
-        
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5),
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] {
-            min-width: 0 !important; /* Disabilita il 100% automatico di Streamlit */
-            padding: 0 2px !important;
+        /* 1. FORZATURA DEL CONTENITORE PADRE A FARE LA TABELLA ORIZZONTALE (Blocca la colonna verticale dello smartphone) */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            gap: 2px !important;
+            margin-bottom: -4px !important;
         }
 
-        /* Assegna le proporzioni millimetriche in modo che la somma sia < 100% per farle stare sulla riga */
-        /* N° */
+        /* 2. FORZATURA LARGHEZZA DELLE SINGOLE CELLE SU MOBILE */
+        /* Cella 1: N° (Strettissima, max 2 cifre) */
         div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) {
-            width: 14% !important; flex: 0 0 14% !important; 
+            width: 14% !important; flex: 0 0 14% !important; min-width: 0 !important;
         }
-        /* Nome */
+        /* Cella 2: Nome */
         div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(2) {
-            width: 28% !important; flex: 0 0 28% !important; 
+            width: 28% !important; flex: 0 0 28% !important; min-width: 0 !important;
         }
-        /* Cognome */
+        /* Cella 3: Cognome */
         div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(3) {
-            width: 28% !important; flex: 0 0 28% !important; 
+            width: 28% !important; flex: 0 0 28% !important; min-width: 0 !important;
         }
-        /* Tit */
+        /* Cella 4: Tit (Spunta) */
         div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(4) {
-            width: 12% !important; flex: 0 0 12% !important; 
+            width: 14% !important; flex: 0 0 14% !important; min-width: 0 !important;
         }
-        /* Gol */
+        /* Cella 5: Gol (Strettissima, max 1 cifra) */
         div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(5) {
-            width: 14% !important; flex: 0 0 14% !important; 
+            width: 16% !important; flex: 0 0 16% !important; min-width: 0 !important;
         }
 
-        /* Compressione testi delle intestazioni Formazione */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) .stMarkdown p,
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] .stMarkdown p {
-            font-size: 12px !important;
+        /* Rimozione di spazi interni vuoti di Streamlit */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) div[data-testid="column"] {
+            padding: 0px !important;
+        }
+
+        /* Ottimizzazione dei testi interni alla tabella */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) .stMarkdown p {
+            font-size: 13px !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
-            margin-bottom: 0 !important;
         }
         
-        /* Allinea centralmente i titoli di N°, Tit e Gol */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) .stMarkdown p,
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(4) .stMarkdown p,
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(5) .stMarkdown p {
+        /* Centratura dei titoli N°, Tit, Gol */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) p,
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(4) p,
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(5) p {
             text-align: center !important;
         }
 
-        /* Trasforma i campi N° e Gol in celle compatte */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) input,
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] input {
-            font-size: 14px !important;
-            padding: 0 !important;
-            text-align: center !important;
+        /* Trasformazione degli input in piccole celle compatte */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) input {
+            font-size: 13px !important;
+            padding: 0px !important;
             height: 32px !important;
-            min-height: 32px !important;
+            text-align: center !important;
         }
 
-        /* Centra perfettamente la spunta */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(4) div[data-testid="stCheckbox"] label {
+        /* Allineamento perfetto del quadratino Checkbox */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(5)) .stCheckbox label {
             padding-left: 0 !important;
             justify-content: center !important;
-            margin-top: 5px !important;
+            margin-top: 4px !important;
         }
     }
     </style>
@@ -328,7 +331,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     with col_del:
                         if st.button("🗑️ Elimina Gara", key=f"del_evp_{ev['id']}"):
                             st.session_state.db["eventi"] = [e for e in st.session_state.db["eventi"] if e["id"] != ev["id"]]
-                            if ev["id"] in st.session_state.db["storico_presenze"]: del st.session_state.db["storico_presenze"][ev["id"]]
+                            if ev["id"] in st.session_state.db["presenze"]: del st.session_state.db["presenze"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_titolari"]: del st.session_state.db["storico_titolari"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_numeri"]: del st.session_state.db["storico_numeri"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_gol"]: del st.session_state.db["storico_gol"][ev["id"]]
@@ -500,13 +503,13 @@ elif menu == "🟢 Calendario e Convocazioni":
                             nuovi_numeri = {}
                             resoconto_gol = {}
                             
-                            # QUESTE SONO LE 5 COLONNE INTERCETTATE DAL CSS MOBILE
-                            c_n, c_nome, c_cognome, c_tit, c_g = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
-                            c_n.markdown("**N°**")
-                            c_nome.markdown("**Nome**")
-                            c_cognome.markdown("**Cognome**")
-                            c_tit.markdown("**Tit.**")
-                            c_g.markdown("**Gol**")
+                            # Intestazioni Formazione in UI
+                            header_cols = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
+                            header_cols[0].markdown("**N°**")
+                            header_cols[1].markdown("**Nome**")
+                            header_cols[2].markdown("**Cognome**")
+                            header_cols[3].markdown("**Tit.**")
+                            header_cols[4].markdown("**Gol**")
                             
                             for c in convocati_list:
                                 parts = c.split(" ", 1)
@@ -514,27 +517,25 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 cogn_str = parts[1] if len(parts) > 1 else ""
                                 
                                 # RIGHE FORMAZIONE - 5 COLONNE
-                                col_num, col_nome, col_cognome, col_tit, col_g = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
+                                row_cols = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
                                 
-                                with col_num:
+                                with row_cols[0]:
                                     num_prec = str(numeri_salvati.get(c, ""))
-                                    # CAMPO N° MAGLIA: Massimo 2 caratteri
                                     num = st.text_input("N°", value=num_prec, max_chars=2, key=f"num_{c}_{ev['id']}", label_visibility="collapsed")
                                     nuovi_numeri[c] = num
                                     
-                                with col_nome:
+                                with row_cols[1]:
                                     st.write(nome_str)
                                     
-                                with col_cognome:
+                                with row_cols[2]:
                                     st.write(cogn_str)
                                     
-                                with col_tit:
+                                with row_cols[3]:
                                     is_tit = st.checkbox("Tit", value=(c in titolari_salvati), key=f"tit_{c}_{ev['id']}", label_visibility="collapsed")
                                     if is_tit: nuovi_titolari.append(c)
                                     
-                                with col_g:
+                                with row_cols[4]:
                                     gol_prec = gol_evento.get(c, 0)
-                                    # CAMPO GOL: Sostituito con Text Input che accetta massimo 1 carattere!
                                     gol_str = st.text_input("Gol", value=str(int(gol_prec)), max_chars=1, key=f"g_{c}_{ev['id']}", label_visibility="collapsed")
                                     try:
                                         gol = int(gol_str) if gol_str.strip() != "" else 0
@@ -717,7 +718,7 @@ elif menu == "🏆 Statistiche Giocatori":
                 "🏅 % Titolare": f"{pct_tit:.2f}%",
                 "⚽ Gol Fatti": gol_tot
             })
-        st.table(tabella_gare)
+        st.table(tab_gare if 'tab_gare' in locals() else tabella_gare)
         
         if tabella_gare:
             html_giocatori = "<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Giocatori</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: #f0f0f0;'>Giocatore</th><th style='padding:8px; background-color: #f0f0f0;'>🟢 Convocato</th><th style='padding:8px; background-color: #f0f0f0;'>🔴 Non Conv.</th><th style='padding:8px; background-color: #f0f0f0;'>👕 Titolare</th><th style='padding:8px; background-color: #f0f0f0;'>📈 % Conv.</th><th style='padding:8px; background-color: #f0f0f0;'>🏅 % Titolare</th><th style='padding:8px; background-color: #f0f0f0;'>⚽ Gol Fatti</th></tr>"
@@ -876,7 +877,6 @@ elif menu == "🏃 Gestione Rosa":
     else:
         st.markdown("### 📋 Elenco Giocatori")
         
-        # AGGIUNTO IL DUMMY (_) PER RENDERE LA TABELLA A 6 COLONNE E NON SUBIRE LA COMPRESSIONE DELLA FORMAZIONE (5 COLONNE)
         col_n, col_d, col_r, col_m, col_e, _ = st.columns([2.5, 1.5, 1.5, 0.6, 0.6, 0.01])
         col_n.markdown("**Nome**")
         col_d.markdown("**Nascita**")
@@ -951,7 +951,6 @@ elif menu == "🏃 Gestione Rosa":
                     except:
                         pass
                 
-                # LA SESTA COLONNA INVISIBILE SALVA IL LAYOUT
                 c_n, c_d, c_r, c_mod, c_del, _ = st.columns([2.5, 1.5, 1.5, 0.6, 0.6, 0.01])
                 c_n.write(f"**{ragazzo}**")
                 c_d.write(nascita_val)
