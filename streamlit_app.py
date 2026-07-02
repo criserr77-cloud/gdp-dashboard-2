@@ -10,6 +10,9 @@ from oauth2client.service_account import ServiceAccountCredentials
 # --- CONFIGURAZIONE GOOGLE SHEETS ---
 ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
 
+# --- CONFIGURAZIONE REGOLAMENTO ---
+MAX_TITOLARI = 9  # Numero massimo di titolari selezionabili per partita (es. 9 per il calcio a 9)
+
 def connetti_foglio():
     try:
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
@@ -482,6 +485,16 @@ elif menu == "🟢 Calendario e Convocazioni":
                             nuovi_numeri = {row["Giocatore"]: str(int(row["N°"])) for _, row in df_edit.iterrows()}
                             resoconto_gol = {row["Giocatore"]: int(row["Gol"]) for _, row in df_edit.iterrows()}
 
+                            numero_titolari = len(nuovi_titolari)
+                            titolari_ok = numero_titolari <= MAX_TITOLARI
+
+                            if numero_titolari > MAX_TITOLARI:
+                                st.error(f"⚠️ Hai selezionato **{numero_titolari}** titolari, ma il massimo è **{MAX_TITOLARI}**. Deseleziona almeno {numero_titolari - MAX_TITOLARI} giocatore/i in tabella prima di salvare.")
+                            elif numero_titolari == MAX_TITOLARI:
+                                st.success(f"✅ Titolari selezionati: {numero_titolari}/{MAX_TITOLARI} — formazione completa.")
+                            else:
+                                st.info(f"ℹ️ Titolari selezionati: {numero_titolari}/{MAX_TITOLARI}")
+
                             st.write("---")
                             st.write("#### © Assegna Fasce")
                             opzioni_fasce = ["Nessuno"] + convocati_list
@@ -496,15 +509,18 @@ elif menu == "🟢 Calendario e Convocazioni":
                             
                             st.write("")
                             if st.button("💾 Salva Formazione e Dati", key=f"btn_salva_form_{ev['id']}", type="primary"):
-                                st.session_state.db["storico_titolari"][ev["id"]] = nuovi_titolari
-                                st.session_state.db["storico_numeri"][ev["id"]] = nuovi_numeri
-                                st.session_state.db["storico_risultati"][ev["id"]] = {"t1": ris_t1, "t2": ris_t2, "t3": ris_t3}
-                                st.session_state.db["storico_gol"][ev["id"]] = resoconto_gol
-                                st.session_state.db.setdefault("storico_capitano", {})[ev["id"]] = input_capitano if input_capitano != "Nessuno" else ""
-                                st.session_state.db.setdefault("storico_vicecapitano", {})[ev["id"]] = input_vice if input_vice != "Nessuno" else ""
-                                salvare_dati()
-                                st.success("Formazione e Dati salvati con successo!")
-                                st.rerun()
+                                if not titolari_ok:
+                                    st.error(f"❌ Impossibile salvare: hai {numero_titolari} titolari selezionati, il massimo consentito è {MAX_TITOLARI}. Correggi la tabella e riprova.")
+                                else:
+                                    st.session_state.db["storico_titolari"][ev["id"]] = nuovi_titolari
+                                    st.session_state.db["storico_numeri"][ev["id"]] = nuovi_numeri
+                                    st.session_state.db["storico_risultati"][ev["id"]] = {"t1": ris_t1, "t2": ris_t2, "t3": ris_t3}
+                                    st.session_state.db["storico_gol"][ev["id"]] = resoconto_gol
+                                    st.session_state.db.setdefault("storico_capitano", {})[ev["id"]] = input_capitano if input_capitano != "Nessuno" else ""
+                                    st.session_state.db.setdefault("storico_vicecapitano", {})[ev["id"]] = input_vice if input_vice != "Nessuno" else ""
+                                    salvare_dati()
+                                    st.success("Formazione e Dati salvati con successo!")
+                                    st.rerun()
 
                             st.write("---")
                             st.markdown(html_formazione, unsafe_allow_html=True)
