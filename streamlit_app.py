@@ -659,7 +659,7 @@ elif menu == "🏆 Statistiche Giocatori":
                         non_convocati += 1
             
             pct_conv = (convocati / totale_gare) * 100 if totale_gare > 0 else 0.00
-            pct_tit = (presenze_titolare / totale_gare) * 100 if totale_gare > 0 else 0.00
+            pct_tit = (presenze_titolare / convocati) * 100 if convocati > 0 else 0.00
             gol_tot = 0
             for ev_id in id_gare:
                 gol_tot += st.session_state.db["storico_gol"].get(str(ev_id), {}).get(ragazzo, 0)
