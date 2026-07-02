@@ -55,7 +55,7 @@ def salvare_dati():
 
 st.set_page_config(page_title="MisterApp", layout="centered")
 
-# --- CSS UNIVERSALE PER OTTIMIZZAZIONE SPAZI MOBILE ---
+# --- CSS MIRATO E UNIVERSALE PER TABELLA FORMAZIONE SU MOBILE ---
 st.markdown("""
     <style>
     .card { 
@@ -82,50 +82,68 @@ st.markdown("""
     }
 
     @media (max-width: 768px) {
-        /* TRUCCO CSS UNIVERSALE: Forza tutti i blocchi a comportarsi come righe flessibili */
-        [data-testid="stHorizontalBlock"] {
-            flex-direction: row !important;
-            flex-wrap: wrap !important;
-            align-items: center !important;
-            gap: 2px !important;
-        }
+        /* TRUCCO INFALLIBILE: Identifica ESATTAMENTE la riga Formazione (che è l'unica nel codice ad avere 5 colonne precise) */
         
-        /* Di default le colonne vanno a capo occupando il 100% (mantiene intatto il resto dell'app) */
-        [data-testid="column"] {
-            min-width: 100% !important;
-        }
-        
-        /* ECCEZIONE: Se il blocco contiene esattamente 5 colonne (Elenco Rosa o Formazione), le costringe sulla stessa riga */
-        [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child:nth-last-child(5),
-        [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child:nth-last-child(5) ~ [data-testid="column"] {
-            min-width: 0 !important;
-            padding: 0 1px !important;
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5),
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] {
+            min-width: 0 !important; /* Disabilita il 100% automatico di Streamlit */
+            padding: 0 2px !important;
         }
 
-        /* Compressione testi per evitare che sbordino nella tabella a 5 colonne */
-        [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child:nth-last-child(5) .stMarkdown p,
-        [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child:nth-last-child(5) ~ [data-testid="column"] .stMarkdown p {
-            font-size: 13px !important;
+        /* Assegna le proporzioni millimetriche in modo che la somma sia < 100% per farle stare sulla riga */
+        /* N° */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) {
+            width: 14% !important; flex: 0 0 14% !important; 
+        }
+        /* Nome */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(2) {
+            width: 28% !important; flex: 0 0 28% !important; 
+        }
+        /* Cognome */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(3) {
+            width: 28% !important; flex: 0 0 28% !important; 
+        }
+        /* Tit */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(4) {
+            width: 12% !important; flex: 0 0 12% !important; 
+        }
+        /* Gol */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(5) {
+            width: 14% !important; flex: 0 0 14% !important; 
+        }
+
+        /* Compressione testi delle intestazioni Formazione */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) .stMarkdown p,
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] .stMarkdown p {
+            font-size: 12px !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
             margin-bottom: 0 !important;
         }
-
-        /* Rimpicciolimento input di testo (N° e Gol) nella tabella a 5 colonne */
-        [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child:nth-last-child(5) input[type="text"],
-        [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child:nth-last-child(5) ~ [data-testid="column"] input[type="text"] {
-            font-size: 14px !important;
-            padding: 0px !important;
-            height: 32px !important;
-            min-height: 32px !important;
+        
+        /* Allinea centralmente i titoli di N°, Tit e Gol */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) .stMarkdown p,
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(4) .stMarkdown p,
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(5) .stMarkdown p {
             text-align: center !important;
         }
 
-        /* Allineamento Checkbox Titolare */
-        div[data-testid="stCheckbox"] {
-            display: flex;
-            justify-content: center;
+        /* Trasforma i campi N° e Gol in celle compatte */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) input,
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"] input {
+            font-size: 14px !important;
+            padding: 0 !important;
+            text-align: center !important;
+            height: 32px !important;
+            min-height: 32px !important;
+        }
+
+        /* Centra perfettamente la spunta */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child:nth-last-child(5) ~ div[data-testid="column"]:nth-child(4) div[data-testid="stCheckbox"] label {
+            padding-left: 0 !important;
+            justify-content: center !important;
+            margin-top: 5px !important;
         }
     }
     </style>
@@ -482,8 +500,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                             nuovi_numeri = {}
                             resoconto_gol = {}
                             
-                            # Intestazioni Tabella a 5 Colonne (Compresse da CSS su Mobile)
-                            c_n, c_nome, c_cognome, c_tit, c_g = st.columns([0.8, 2.5, 2.5, 0.8, 0.8])
+                            # QUESTE SONO LE 5 COLONNE INTERCETTATE DAL CSS MOBILE
+                            c_n, c_nome, c_cognome, c_tit, c_g = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
                             c_n.markdown("**N°**")
                             c_nome.markdown("**Nome**")
                             c_cognome.markdown("**Cognome**")
@@ -495,12 +513,12 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 nome_str = parts[0]
                                 cogn_str = parts[1] if len(parts) > 1 else ""
                                 
-                                # Righe Tabella a 5 Colonne
-                                col_num, col_nome, col_cognome, col_tit, col_g = st.columns([0.8, 2.5, 2.5, 0.8, 0.8])
+                                # RIGHE FORMAZIONE - 5 COLONNE
+                                col_num, col_nome, col_cognome, col_tit, col_g = st.columns([0.6, 2.5, 2.5, 0.6, 0.6])
                                 
                                 with col_num:
                                     num_prec = str(numeri_salvati.get(c, ""))
-                                    # Limite massimo 2 cifre
+                                    # CAMPO N° MAGLIA: Massimo 2 caratteri
                                     num = st.text_input("N°", value=num_prec, max_chars=2, key=f"num_{c}_{ev['id']}", label_visibility="collapsed")
                                     nuovi_numeri[c] = num
                                     
@@ -516,8 +534,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                                     
                                 with col_g:
                                     gol_prec = gol_evento.get(c, 0)
-                                    # Cella gol stretta che accetta al massimo 1 cifra come richiesto
-                                    gol_str = st.text_input("Gol", value=str(gol_prec), max_chars=1, key=f"g_{c}_{ev['id']}", label_visibility="collapsed")
+                                    # CAMPO GOL: Sostituito con Text Input che accetta massimo 1 carattere!
+                                    gol_str = st.text_input("Gol", value=str(int(gol_prec)), max_chars=1, key=f"g_{c}_{ev['id']}", label_visibility="collapsed")
                                     try:
                                         gol = int(gol_str) if gol_str.strip() != "" else 0
                                     except ValueError:
@@ -858,7 +876,8 @@ elif menu == "🏃 Gestione Rosa":
     else:
         st.markdown("### 📋 Elenco Giocatori")
         
-        col_n, col_d, col_r, col_m, col_e = st.columns([2.5, 1.5, 1.5, 0.6, 0.6])
+        # AGGIUNTO IL DUMMY (_) PER RENDERE LA TABELLA A 6 COLONNE E NON SUBIRE LA COMPRESSIONE DELLA FORMAZIONE (5 COLONNE)
+        col_n, col_d, col_r, col_m, col_e, _ = st.columns([2.5, 1.5, 1.5, 0.6, 0.6, 0.01])
         col_n.markdown("**Nome**")
         col_d.markdown("**Nascita**")
         col_r.markdown("**Ruolo**")
@@ -932,7 +951,8 @@ elif menu == "🏃 Gestione Rosa":
                     except:
                         pass
                 
-                c_n, c_d, c_r, c_mod, c_del = st.columns([2.5, 1.5, 1.5, 0.6, 0.6])
+                # LA SESTA COLONNA INVISIBILE SALVA IL LAYOUT
+                c_n, c_d, c_r, c_mod, c_del, _ = st.columns([2.5, 1.5, 1.5, 0.6, 0.6, 0.01])
                 c_n.write(f"**{ragazzo}**")
                 c_d.write(nascita_val)
                 c_r.write(ruolo_val)
