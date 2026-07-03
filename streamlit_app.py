@@ -103,7 +103,7 @@ if "db" not in st.session_state:
     if "storico_capitano" not in st.session_state.db: st.session_state.db["storico_capitano"] = {}
     if "storico_vicecapitano" not in st.session_state.db: st.session_state.db["storico_vicecapitano"] = {}
 
-if "edit_mode" not in st.session_state: st.session_state.edit_mode = None
+if "rosa_editor_version" not in st.session_state: st.session_state.rosa_editor_version = 0
 if "edit_evento" not in st.session_state: st.session_state.edit_evento = None
 
 menu = st.sidebar.radio("Navigazione", [
@@ -831,98 +831,124 @@ elif menu == "🏃 Gestione Rosa":
         st.warning("La Rosa è vuota!")
     else:
         st.markdown("### 📋 Elenco Giocatori")
-        
-        col_n, col_d, col_r, col_m, col_e, _ = st.columns([2.5, 1.5, 1.5, 0.6, 0.6, 0.01])
-        col_n.markdown("**Nome**")
-        col_d.markdown("**Nascita**")
-        col_r.markdown("**Ruolo**")
-        col_m.markdown("**Mod**")
-        col_e.markdown("**Eli**")
-        st.write("---")
-        
-        for i, ragazzo in enumerate(list(st.session_state.db["ragazzi"])):
-            if st.session_state.edit_mode == i:
-                st.markdown(f"**✏️ Stai modificando: {ragazzo}**")
-                c_name, c_date, c_role = st.columns([2.5, 1.5, 1.5])
-                with c_name: 
-                    nuovo_nome_mod = st.text_input("Nome", value=ragazzo, key=f"edit_input_{i}", label_visibility="collapsed")
-                
-                nascita_prec = st.session_state.db.get("anagrafica_nascita", {}).get(ragazzo, "")
-                if nascita_prec:
-                    try: d_obj = datetime.datetime.strptime(nascita_prec, "%Y-%m-%d").date()
-                    except: d_obj = datetime.date(2014, 1, 1)
-                else:
+        st.caption("Tocca una cella per modificarla in tabella. Spunta '🗑️ Elimina' sulle righe da rimuovere, poi premi 'Salva Modifiche Rosa'.")
+
+        ruoli_disp = ["Portiere", "Difensore", "Centrocampista", "Attaccante", "Non definito"]
+        nomi_originali = list(st.session_state.db["ragazzi"])
+
+        righe_rosa = []
+        for ragazzo in nomi_originali:
+            nascita_prec = st.session_state.db.get("anagrafica_nascita", {}).get(ragazzo, "")
+            if nascita_prec:
+                try:
+                    d_obj = datetime.datetime.strptime(nascita_prec, "%Y-%m-%d").date()
+                except ValueError:
                     d_obj = datetime.date(2014, 1, 1)
-                with c_date: 
-                    nuova_nascita_mod = st.date_input("Nascita", d_obj, key=f"edit_d_{i}", label_visibility="collapsed")
-                    
-                ruolo_prec = st.session_state.db.get("anagrafica_ruolo", {}).get(ragazzo, "Non definito")
-                ruoli_disp = ["Portiere", "Difensore", "Centrocampista", "Attaccante", "Non definito"]
-                idx_r = ruoli_disp.index(ruolo_prec) if ruolo_prec in ruoli_disp else 4
-                with c_role: 
-                    nuovo_ruolo_mod = st.selectbox("Ruolo", ruoli_disp, index=idx_r, key=f"edit_r_{i}", label_visibility="collapsed")
-                
-                col_s, col_a, _ = st.columns([1, 1, 2])
-                with col_s:
-                    if st.button("💾 Salva", key=f"save_btn_{i}", type="primary"):
-                        nuovo_nome_mod = nuovo_nome_mod.strip()
-                        nome_finale = ragazzo
-                        if nuovo_nome_mod and nuovo_nome_mod != ragazzo and nuovo_nome_mod not in st.session_state.db["ragazzi"]:
-                            st.session_state.db["ragazzi"][i] = nuovo_nome_mod
-                            nome_finale = nuovo_nome_mod
-                            for ev_id, appello in st.session_state.db["storico_presenze"].items():
-                                if ragazzo in appello: appello[nuovo_nome_mod] = appello.pop(ragazzo)
-                            for ev_id, titolari_list in st.session_state.db["storico_titolari"].items():
-                                if ragazzo in titolari_list: 
-                                    titolari_list.remove(ragazzo)
-                                    titolari_list.append(nuovo_nome_mod)
-                            for ev_id, numeri_dict in st.session_state.db["storico_numeri"].items():
-                                if numeri_dict and ragazzo in numeri_dict: numeri_dict[nuovo_nome_mod] = numeri_dict.pop(ragazzo)
-                            for ev_id, gol_dict in st.session_state.db["storico_gol"].items():
-                                if gol_dict and ragazzo in gol_dict: gol_dict[nuovo_nome_mod] = gol_dict.pop(ragazzo)
-                            
-                            if ragazzo in st.session_state.db.get("anagrafica_ruolo", {}):
-                                st.session_state.db["anagrafica_ruolo"].pop(ragazzo)
-                            if ragazzo in st.session_state.db.get("anagrafica_nascita", {}):
-                                st.session_state.db["anagrafica_nascita"].pop(ragazzo)
-                        
-                        st.session_state.db.setdefault("anagrafica_ruolo", {})[nome_finale] = nuovo_ruolo_mod
-                        st.session_state.db.setdefault("anagrafica_nascita", {})[nome_finale] = str(nuova_nascita_mod)
-                        
-                        st.session_state.edit_mode = None
-                        salvare_dati()
-                        st.rerun()
-                with col_a:
-                    if st.button("❌ Annulla", key=f"cancel_btn_{i}"):
-                        st.session_state.edit_mode = None
-                        st.rerun()
-                st.write("---")
             else:
-                ruolo_val = st.session_state.db.get("anagrafica_ruolo", {}).get(ragazzo, "Non definito")
-                nascita_val = st.session_state.db.get("anagrafica_nascita", {}).get(ragazzo, "-")
-                if nascita_val != "-":
-                    try:
-                        nascita_val = datetime.datetime.strptime(nascita_val, "%Y-%m-%d").strftime("%d/%m/%Y")
-                    except:
-                        pass
-                
-                c_n, c_d, c_r, c_mod, c_del, _ = st.columns([2.5, 1.5, 1.5, 0.6, 0.6, 0.01])
-                c_n.write(f"**{ragazzo}**")
-                c_d.write(nascita_val)
-                c_r.write(ruolo_val)
-                with c_mod:
-                    if st.button("✏️", key=f"edit_btn_{i}", help="Modifica"):
-                        st.session_state.edit_mode = i
-                        st.rerun()
-                with c_del:
-                    if st.button("🗑️", key=f"del_btn_{i}", help="Elimina"):
-                        st.session_state.db["ragazzi"].remove(ragazzo)
-                        if ragazzo in st.session_state.db.get("anagrafica_ruolo", {}): del st.session_state.db["anagrafica_ruolo"][ragazzo]
-                        if ragazzo in st.session_state.db.get("anagrafica_nascita", {}): del st.session_state.db["anagrafica_nascita"][ragazzo]
-                        salvare_dati()
-                        st.rerun()
-                st.write("---")
-                    
+                d_obj = datetime.date(2014, 1, 1)
+
+            ruolo_prec = st.session_state.db.get("anagrafica_ruolo", {}).get(ragazzo, "Non definito")
+            if ruolo_prec not in ruoli_disp:
+                ruolo_prec = "Non definito"
+
+            righe_rosa.append({
+                "Nome e Cognome": ragazzo,
+                "Data di Nascita": d_obj,
+                "Ruolo": ruolo_prec,
+                "🗑️ Elimina": False,
+            })
+
+        df_rosa = pd.DataFrame(righe_rosa)
+
+        # La chiave include una "versione": dopo ogni salvataggio la incrementiamo per
+        # forzare un widget pulito e non farci reincollare in tabella modifiche vecchie
+        # (es. un'eliminazione già salvata) su righe che nel frattempo si sono spostate.
+        df_rosa_edit = st.data_editor(
+            df_rosa,
+            key=f"data_editor_rosa_{st.session_state.rosa_editor_version}",
+            hide_index=True,
+            use_container_width=True,
+            num_rows="fixed",
+            column_order=["Nome e Cognome", "Data di Nascita", "Ruolo", "🗑️ Elimina"],
+            column_config={
+                "Nome e Cognome": st.column_config.TextColumn("Nome e Cognome", width="medium"),
+                "Data di Nascita": st.column_config.DateColumn("Data di Nascita", format="DD/MM/YYYY", width="small"),
+                "Ruolo": st.column_config.SelectboxColumn("Ruolo", options=ruoli_disp, width="medium"),
+                "🗑️ Elimina": st.column_config.CheckboxColumn("🗑️ Elimina", width="small"),
+            },
+        )
+
+        if st.button("💾 Salva Modifiche Rosa", key="btn_salva_rosa", type="primary"):
+            # --- Validazione preliminare: nessun nome vuoto, nessun duplicato ---
+            nomi_superstiti = []
+            errori = []
+            for idx, row in df_rosa_edit.iterrows():
+                if bool(row["🗑️ Elimina"]):
+                    continue
+                nome_pulito = str(row["Nome e Cognome"]).strip()
+                if nome_pulito == "":
+                    errori.append(f"Riga {idx + 1}: il nome non può essere vuoto.")
+                    continue
+                nomi_superstiti.append(nome_pulito)
+
+            duplicati = {n for n in nomi_superstiti if nomi_superstiti.count(n) > 1}
+            if duplicati:
+                errori.append(f"Nomi duplicati non ammessi: {', '.join(sorted(duplicati))}.")
+
+            if errori:
+                for e in errori:
+                    st.error(f"❌ {e}")
+            else:
+                nuova_lista_ragazzi = []
+                for idx, row in df_rosa_edit.iterrows():
+                    nome_originale = nomi_originali[idx]
+
+                    if bool(row["🗑️ Elimina"]):
+                        if nome_originale in st.session_state.db.get("anagrafica_ruolo", {}):
+                            del st.session_state.db["anagrafica_ruolo"][nome_originale]
+                        if nome_originale in st.session_state.db.get("anagrafica_nascita", {}):
+                            del st.session_state.db["anagrafica_nascita"][nome_originale]
+                        continue
+
+                    nome_nuovo = str(row["Nome e Cognome"]).strip()
+                    nascita_nuova = row["Data di Nascita"]
+                    ruolo_nuovo = row["Ruolo"]
+
+                    if nome_nuovo != nome_originale:
+                        # Propaga la rinomina a tutto lo storico, come nel comportamento precedente
+                        for _, appello in st.session_state.db["storico_presenze"].items():
+                            if nome_originale in appello:
+                                appello[nome_nuovo] = appello.pop(nome_originale)
+                        for _, titolari_list in st.session_state.db["storico_titolari"].items():
+                            if nome_originale in titolari_list:
+                                titolari_list.remove(nome_originale)
+                                titolari_list.append(nome_nuovo)
+                        for _, numeri_dict in st.session_state.db["storico_numeri"].items():
+                            if numeri_dict and nome_originale in numeri_dict:
+                                numeri_dict[nome_nuovo] = numeri_dict.pop(nome_originale)
+                        for _, gol_dict in st.session_state.db["storico_gol"].items():
+                            if gol_dict and nome_originale in gol_dict:
+                                gol_dict[nome_nuovo] = gol_dict.pop(nome_originale)
+                        for campo_fascia in ("storico_capitano", "storico_vicecapitano"):
+                            for ev_id_f, nome_assegnato in st.session_state.db.get(campo_fascia, {}).items():
+                                if nome_assegnato == nome_originale:
+                                    st.session_state.db[campo_fascia][ev_id_f] = nome_nuovo
+                        if nome_originale in st.session_state.db.get("anagrafica_ruolo", {}):
+                            st.session_state.db["anagrafica_ruolo"].pop(nome_originale)
+                        if nome_originale in st.session_state.db.get("anagrafica_nascita", {}):
+                            st.session_state.db["anagrafica_nascita"].pop(nome_originale)
+
+                    st.session_state.db.setdefault("anagrafica_ruolo", {})[nome_nuovo] = ruolo_nuovo
+                    nascita_str = nascita_nuova.strftime("%Y-%m-%d") if hasattr(nascita_nuova, "strftime") else str(nascita_nuova)
+                    st.session_state.db.setdefault("anagrafica_nascita", {})[nome_nuovo] = nascita_str
+                    nuova_lista_ragazzi.append(nome_nuovo)
+
+                st.session_state.db["ragazzi"] = nuova_lista_ragazzi
+                st.session_state.rosa_editor_version += 1
+                salvare_dati()
+                st.success("✅ Rosa aggiornata con successo!")
+                st.rerun()
+
     st.subheader("➕ Aggiungi un nuovo giocatore")
     with st.container():
         col_n, col_d, col_r = st.columns([2.5, 1.5, 1.5])
