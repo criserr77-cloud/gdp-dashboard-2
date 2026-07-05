@@ -154,12 +154,17 @@ def genera_pdf(html_content):
         st.error(f"Errore nella generazione del PDF: {e}")
         return None
 
-def get_logo_html():
+def get_logo_html(per_pdf=False):
     for ext in ["png", "jpg", "jpeg"]:
         if os.path.exists(f"stemma.{ext}"):
             with open(f"stemma.{ext}", "rb") as f:
                 encoded = base64.b64encode(f.read()).decode()
+                if per_pdf:
+                    # xhtml2pdf non supporta bene max-width/object-fit: serve una dimensione fissa esplicita.
+                    return f"<img src='data:image/{ext};base64,{encoded}' width='90' height='100' style='width:90px; height:100px;'>"
                 return f"<img src='data:image/{ext};base64,{encoded}' style='max-width: 100px; max-height: 120px; object-fit: contain;'>"
+    if per_pdf:
+        return "<div style='font-size: 40px;'>&#9812;</div>"
     return "<div style='font-size: 50px;'>🛡️</div>"
 
 # --- HELPER NOME/COGNOME ---
@@ -626,7 +631,9 @@ elif menu == "🟢 Calendario e Convocazioni":
                     with tab2:
                         st.markdown(html_distinta, unsafe_allow_html=True)
                         st.write("")
-                        pdf_convocazioni = genera_pdf(html_distinta)
+                        logo_immagine_pdf = get_logo_html(per_pdf=True)
+                        html_distinta_pdf = html_distinta.replace(logo_immagine, logo_immagine_pdf)
+                        pdf_convocazioni = genera_pdf(html_distinta_pdf)
                         if pdf_convocazioni:
                             st.download_button(
                                 label="⬇️ Scarica Convocazioni (PDF)",
