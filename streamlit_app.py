@@ -43,13 +43,8 @@ for h in range(14, 22):
     orari_allenamento.append(f"{h:02d}:00")
     orari_allenamento.append(f"{h:02d}:30")
 
-import psycopg2
-
-import json
 import requests
 import logging
-logging.basicConfig(filename="app.log", level=logging.INFO)
-import streamlit as st
 
 PROJECT_ID = "misterapp-500516"
 API_KEY = "AIzaSyCUKnJF6aIRqgOUiEiLmrd04TF_tJUpnHw"
@@ -109,25 +104,102 @@ def salvare_dati():
 
 st.set_page_config(page_title="MisterApp", layout="centered")
 
-
-def dividi_nome(nome_completo):
-    parti = str(nome_completo).strip().split()
-    if len(parti) == 1:
-        return "", parti[0]
+# --- CSS DEFINITIVO ---
+st.markdown(f"""
+    <style>
+    .card {{ 
+        background-color: var(--secondary-background-color); 
+        border-radius: 15px; padding: 20px; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
+        margin-bottom: 20px; 
+        border: 1px solid {COLORE_VERDE};
+    }}
     
-    prefissi = ["de", "di", "la", "lo", "da", "della", "delle", "delli", "dello", "dei", "degli"]
-    if parti[0].lower() in prefissi and len(parti) > 2:
-        cognome = f"{parti[0]} {parti[1]}"
-        nome = " ".join(parti[2:])
-        return nome, cognome
-    elif parti[0].lower().startswith("d'") and len(parti) > 1:
-        cognome = parti[0]
-        nome = " ".join(parti[1:])
-        return nome, cognome
-    else:
-        cognome = parti[0]
-        nome = " ".join(parti[1:])
-        return nome, cognome
+    [data-testid="stSidebar"] {{
+        border-right: 2px solid {COLORE_VERDE};
+    }}
+    [data-testid="stSidebar"] div[role="radiogroup"] label {{
+        padding: 18px 20px !important;
+        margin-bottom: 12px !important;
+        background-color: var(--secondary-background-color);
+        border-radius: 12px;
+        border: 1px solid {COLORE_BLU};
+        cursor: pointer;
+        transition: border-color 0.2s ease;
+    }}
+    [data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
+        border-color: {COLORE_VERDE};
+    }}
+    [data-testid="stSidebar"] div[role="radiogroup"] label p {{
+        font-size: 22px !important;
+        font-weight: bold !important;
+        color: var(--text-color) !important;
+    }}
+
+    button[kind="primary"], .stButton button[kind="primary"] {{
+        background: linear-gradient(135deg, {COLORE_BLU} 0%, {COLORE_VERDE} 100%) !important;
+        border: none !important;
+        color: white !important;
+    }}
+
+    h1, h2 {{
+        border-left: 5px solid {COLORE_VERDE};
+        padding-left: 12px;
+    }}
+    </style>
+""", unsafe_allow_html=True)
+
+def genera_pdf(html_content):
+    try:
+        from xhtml2pdf import pisa
+        from io import BytesIO
+    except ImportError:
+        st.error("Manca la libreria 'xhtml2pdf'. Aggiungila al file requirements.txt e riavvia l'app.")
+        return None
+    try:
+        documento_completo = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    @page {{ size: A4; margin: 1.5cm; }}
+    html, body {{ background-color: white; margin: 0; padding: 0; }}
+</style>
+</head>
+<body>
+{html_content}
+</body>
+</html>"""
+        result = BytesIO()
+        pdf = pisa.pisaDocument(BytesIO(documento_completo.encode("UTF-8")), result)
+        if not pdf.err:
+            return result.getvalue()
+        return None
+    except Exception as e:
+        st.error(f"Errore nella generazione del PDF: {e}")
+        return None
+
+def get_logo_html(per_pdf=False):
+    for ext in ["png", "jpg", "jpeg"]:
+        if os.path.exists(f"stemma.{ext}"):
+            with open(f"stemma.{ext}", "rb") as f:
+                encoded = base64.b64encode(f.read()).decode()
+                if per_pdf:
+                    return f"<img src='data:image/{ext};base64,{encoded}' width='90' height='100' style='width:90px; height:100px;'>"
+                return f"<img src='data:image/{ext};base64,{encoded}' style='max-width: 100px; max-height: 120px; object-fit: contain;'>"
+    if per_pdf:
+        return "<div style='font-size: 40px;'>&#9812;</div>"
+    return "<div style='font-size: 50px;'>🛡️</div>"
+
+def dividi_nome(giocatore):
+    parti = str(giocatore).split(" ", 1)
+    nome = parti[0]
+    cognome = parti[1] if len(parti) > 1 else ""
+    return nome, cognome
+
+def cognome_nome(giocatore):
+    nome, cognome = dividi_nome(giocatore)
+    return f"{cognome} {nome}".strip() if cognome else nome
 
 def ordina_giocatori(lista_giocatori):
     return sorted(lista_giocatori, key=lambda g: (dividi_nome(g)[1].lower(), dividi_nome(g)[0].lower()))
@@ -495,22 +567,22 @@ elif menu == "🟢 Calendario e Convocazioni":
                     whatsapp_text += f"\n*CONVOCAZIONI:*\n"
                     whatsapp_text += "```\n"
                     
-                    cognomi_cnt = {}
+                    nomi_base_cnt = {}
                     for r in st.session_state.db.get("ragazzi", []):
                         nome_p, cognome_p = dividi_nome(r)
-                        cognome_chiave = cognome_p.lower().strip()
-                        cognomi_cnt[cognome_chiave] = cognomi_cnt.get(cognome_chiave, 0) + 1
+                        nome_iniziale = f"{nome_p[0]}." if nome_p else ""
+                        ridotto = f"{cognome_p} {nome_iniziale}".strip() if cognome_p else nome_iniziale
+                        nomi_base_cnt[ridotto] = nomi_base_cnt.get(ridotto, 0) + 1
 
                     def format_nome_ridotto(ragazzo):
                         nome_p, cognome_p = dividi_nome(ragazzo)
-                        cognome_chiave = cognome_p.lower().strip()
+                        nome_iniziale = f"{nome_p[0]}." if nome_p else ""
+                        ridotto = f"{cognome_p} {nome_iniziale}".strip() if cognome_p else nome_iniziale
                         
-                        if cognomi_cnt.get(cognome_chiave, 1) > 1:
-                            # Ci sono due cognomi uguali, usiamo il nome per intero o più esteso
-                            return f"{cognome_p} {nome_p}".strip()
-                        else:
-                            nome_iniziale = f"{nome_p[0]}." if nome_p else ""
-                            return f"{cognome_p} {nome_iniziale}".strip() if cognome_p else nome_iniziale
+                        if nomi_base_cnt.get(ridotto, 1) > 1:
+                            nome_esteso = f"{nome_p[:3]}." if len(nome_p) >= 3 else nome_p
+                            return f"{cognome_p} {nome_esteso}".strip() if cognome_p else nome_esteso
+                        return ridotto
                         
                     max_len = max([len(format_nome_ridotto(r)) for r in st.session_state.db["ragazzi"]]) if st.session_state.db["ragazzi"] else 11
                     max_len = max(9, max_len) # Almeno 9 per "Giocatore"
