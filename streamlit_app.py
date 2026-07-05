@@ -549,12 +549,17 @@ elif menu == "🟢 Calendario e Convocazioni":
                     whatsapp_text += f"🏟️ *Luogo:* {ind_campo}\n"
                     if note_agg and note_agg.strip(): whatsapp_text += f"📝 *Note:* {note_agg.strip()}\n"
                         
-                    whatsapp_text += f"\n*ELENCO CONVOCATI:*\n"
-                    if convocati_list:
-                        for c in convocati_list:
-                            whatsapp_text += f"✅ {cognome_nome(c)}\n"
+                    whatsapp_text += f"\n*TABELLA CONVOCAZIONI:*\n"
+                    whatsapp_text += "👤 *Cognome Nome* | *C* | *NC*\n"
+                    if not st.session_state.db["ragazzi"]:
+                        whatsapp_text += "*(Nessun giocatore in rosa)*\n"
                     else:
-                        whatsapp_text += "*(Nessun convocato ancora selezionato)*\n"
+                        for ragazzo in ordina_giocatori(st.session_state.db["ragazzi"]):
+                            stato = appello_evento.get(ragazzo, "🟢 Convocato")
+                            is_convocato = "Convocato" in stato and "Non" not in stato
+                            c_mark = "✅" if is_convocato else "➖"
+                            nc_mark = "✅" if not is_convocato else "➖"
+                            whatsapp_text += f"▪️ {cognome_nome(ragazzo)} | {c_mark} | {nc_mark}\n"
                     
                     whatsapp_text += "\nGrazie 💚💙"
 
