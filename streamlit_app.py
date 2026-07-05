@@ -556,8 +556,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                     max_len = min(max_len, 15) # limite per evitare a capo su schermi piccoli
                     
                     header_nome = "Giocatore".ljust(max_len)
-                    whatsapp_text += f" {header_nome} | C | NC\n"
-                    whatsapp_text += " " + "-" * (max_len + 10) + "\n"
+                    whatsapp_text += f" {header_nome} | C  | NC\n"
+                    whatsapp_text += " " + "-" * (max_len + 12) + "\n"
                     
                     if not st.session_state.db["ragazzi"]:
                         whatsapp_text += " (Nessun giocatore in rosa)\n"
