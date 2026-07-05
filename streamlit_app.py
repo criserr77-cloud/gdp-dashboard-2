@@ -3,7 +3,9 @@ import pandas as pd
 import datetime
 import json
 import os
+import io
 import base64
+import urllib.parse
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -113,6 +115,23 @@ st.markdown(f"""
     }}
     </style>
 """, unsafe_allow_html=True)
+
+def genera_pdf(html_content):
+    """Converte una stringa HTML in un PDF (bytes). Restituisce None se la generazione fallisce."""
+    try:
+        from xhtml2pdf import pisa
+    except ImportError:
+        st.error("Manca la libreria 'xhtml2pdf'. Aggiungila al file requirements.txt e riavvia l'app.")
+        return None
+    try:
+        buffer = io.BytesIO()
+        risultato = pisa.CreatePDF(src=html_content, dest=buffer)
+        if risultato.err:
+            return None
+        return buffer.getvalue()
+    except Exception as e:
+        st.error(f"Errore nella generazione del PDF: {e}")
+        return None
 
 def get_logo_html():
     for ext in ["png", "jpg", "jpeg"]:
@@ -578,17 +597,37 @@ elif menu == "🟢 Calendario e Convocazioni":
                     with tab2:
                         st.markdown(html_distinta, unsafe_allow_html=True)
                         st.write("")
-                        st.download_button(
-                            label="⬇️ Scarica Convocazioni (.html)",
-                            data=html_distinta,
-                            file_name=f"Convocazioni_{sq_casa}_{sq_trasf}.html",
-                            mime="text/html",
-                            key=f"dl_html_conv_{ev['id']}"
-                        )
+                        pdf_convocazioni = genera_pdf(html_distinta)
+                        if pdf_convocazioni:
+                            st.download_button(
+                                label="⬇️ Scarica Convocazioni (PDF)",
+                                data=pdf_convocazioni,
+                                file_name=f"Convocazioni_{sq_casa}_{sq_trasf}.pdf",
+                                mime="application/pdf",
+                                key=f"dl_pdf_conv_{ev['id']}"
+                            )
+                        else:
+                            st.warning("⚠️ Non sono riuscito a generare il PDF. Scarica la versione HTML in alternativa.")
+                            st.download_button(
+                                label="⬇️ Scarica Convocazioni (.html)",
+                                data=html_distinta,
+                                file_name=f"Convocazioni_{sq_casa}_{sq_trasf}.html",
+                                mime="text/html",
+                                key=f"dl_html_conv_fallback_{ev['id']}"
+                            )
+                        st.caption("📎 WhatsApp non permette di allegare automaticamente un file da un sito esterno: scarica il PDF qui sopra, poi allegalo manualmente nella chat. Nella scheda '📱 Messaggio WhatsApp' trovi un pulsante per aprire subito la chat con il testo già pronto.")
 
                     with tab3:
                         st.code(whatsapp_text, language="markdown")
                         st.caption("💡 Clicca sull'iconcina dei foglietti in alto a destra in questo riquadro nero per copiare tutto il testo in un colpo solo e incollarlo su WhatsApp!")
+
+                        st.write("---")
+                        wa_url = "https://api.whatsapp.com/send?text=" + urllib.parse.quote(whatsapp_text)
+                        if hasattr(st, "link_button"):
+                            st.link_button("📲 Apri WhatsApp con questo messaggio", wa_url)
+                        else:
+                            st.markdown(f"[📲 Apri WhatsApp con questo messaggio]({wa_url})")
+                        st.info("WhatsApp non consente di allegare automaticamente un PDF da un sito web (limite della piattaforma, non dell'app). Dopo aver aperto la chat: scarica il PDF dalla scheda '📄 Convocazioni Ufficiali' e allegalo manualmente con l'icona della graffetta 📎.")
 
     st.write("---")
     st.subheader("➕ Inserisci una Nuova Partita")
