@@ -4,6 +4,7 @@ import datetime
 import json
 import os
 import base64
+import urllib.parse
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -12,6 +13,13 @@ ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc"
 
 # --- CONFIGURAZIONE REGOLAMENTO ---
 MAX_TITOLARI = 9  # Numero massimo di titolari selezionabili per partita (es. 9 per il calcio a 9)
+
+# --- CONFIGURAZIONE COLORI (tema Blu/Verde) ---
+# Cambia solo questi valori per modificare la palette in tutta l'app e nei documenti scaricabili.
+COLORE_BLU = "#1565C0"          # Blu principale (Convocazioni, accenti, pulsanti)
+COLORE_BLU_CHIARO = "#E3F2FD"   # Blu chiaro (sfondo intestazioni documento Convocazioni)
+COLORE_VERDE = "#2E7D32"        # Verde principale (Formazione, accenti, pulsanti)
+COLORE_VERDE_CHIARO = "#E8F5E9" # Verde chiaro (sfondo intestazioni documento Formazione)
 
 def connetti_foglio():
     try:
@@ -60,40 +68,116 @@ def salvare_dati():
 st.set_page_config(page_title="MisterApp", layout="centered")
 
 # --- CSS DEFINITIVO E BLOCCATO PER VISUALIZZAZIONE ORIZZONTALE SU MOBILE ---
-st.markdown("""
+st.markdown(f"""
     <style>
-    .card { 
+    .card {{ 
         background-color: var(--secondary-background-color); 
         border-radius: 15px; padding: 20px; 
         box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
         margin-bottom: 20px; 
-        border: 1px solid rgba(255,255,255,0.1);
-    }
+        border: 1px solid {COLORE_VERDE};
+    }}
     
-    /* MENU LATERALE RESPONSIVE ED INGRANDITO */
-    [data-testid="stSidebar"] div[role="radiogroup"] label {
+    /* MENU LATERALE RESPONSIVE ED INGRANDITO - tema Blu/Verde */
+    [data-testid="stSidebar"] {{
+        border-right: 2px solid {COLORE_VERDE};
+    }}
+    [data-testid="stSidebar"] div[role="radiogroup"] label {{
         padding: 18px 20px !important;
         margin-bottom: 12px !important;
         background-color: var(--secondary-background-color);
         border-radius: 12px;
-        border: 1px solid rgba(255,255,255,0.2);
+        border: 1px solid {COLORE_BLU};
         cursor: pointer;
-    }
-    [data-testid="stSidebar"] div[role="radiogroup"] label p {
+        transition: border-color 0.2s ease;
+    }}
+    [data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
+        border-color: {COLORE_VERDE};
+    }}
+    [data-testid="stSidebar"] div[role="radiogroup"] label p {{
         font-size: 22px !important;
         font-weight: bold !important;
         color: var(--text-color) !important;
-    }
+    }}
+
+    /* Pulsanti primari (Salva, Aggiungi, ecc.) con sfumatura Blu -> Verde */
+    button[kind="primary"], .stButton button[kind="primary"] {{
+        background: linear-gradient(135deg, {COLORE_BLU} 0%, {COLORE_VERDE} 100%) !important;
+        border: none !important;
+        color: white !important;
+    }}
+
+    /* Intestazioni di pagina con accento verde */
+    h1, h2 {{
+        border-left: 5px solid {COLORE_VERDE};
+        padding-left: 12px;
+    }}
     </style>
 """, unsafe_allow_html=True)
 
-def get_logo_html():
+def genera_pdf(html_content):
+    """Converte una stringa HTML in un PDF (bytes) usando xhtml2pdf. Restituisce None se la generazione fallisce."""
+    try:
+        from xhtml2pdf import pisa
+        from io import BytesIO
+    except ImportError:
+        st.error("Manca la libreria 'xhtml2pdf'. Aggiungila al file requirements.txt (rimuovi weasyprint) e riavvia l'app.")
+        return None
+    try:
+        documento_completo = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    @page {{
+        size: A4;
+        margin: 1.5cm;
+    }}
+    html, body {{
+        background-color: white;
+        margin: 0;
+        padding: 0;
+    }}
+</style>
+</head>
+<body>
+{html_content}
+</body>
+</html>"""
+        result = BytesIO()
+        pdf = pisa.pisaDocument(BytesIO(documento_completo.encode("UTF-8")), result)
+        if not pdf.err:
+            return result.getvalue()
+        return None
+    except Exception as e:
+        st.error(f"Errore nella generazione del PDF: {e}")
+        return None
+
+def get_logo_html(per_pdf=False):
     for ext in ["png", "jpg", "jpeg"]:
         if os.path.exists(f"stemma.{ext}"):
             with open(f"stemma.{ext}", "rb") as f:
                 encoded = base64.b64encode(f.read()).decode()
+                if per_pdf:
+                    return f"<img src='data:image/{ext};base64,{encoded}' width='90' height='100' style='width:90px; height:100px;'>"
                 return f"<img src='data:image/{ext};base64,{encoded}' style='max-width: 100px; max-height: 120px; object-fit: contain;'>"
+    if per_pdf:
+        return "<div style='font-size: 40px;'>&#9812;</div>"
     return "<div style='font-size: 50px;'>🛡️</div>"
+
+# --- HELPER NOME/COGNOME ---
+def dividi_nome(giocatore):
+    parti = str(giocatore).split(" ", 1)
+    nome = parti[0]
+    cognome = parti[1] if len(parti) > 1 else ""
+    return nome, cognome
+
+def cognome_nome(giocatore):
+    nome, cognome = dividi_nome(giocatore)
+    return f"{cognome} {nome}".strip() if cognome else nome
+
+def ordina_giocatori(lista_giocatori):
+    return sorted(lista_giocatori, key=lambda g: (dividi_nome(g)[1].lower(), dividi_nome(g)[0].lower()))
 
 # Inizializzazione Session State
 if "db" not in st.session_state: 
@@ -171,9 +255,9 @@ if menu == "🔵 Calendario Allenamenti":
                         resoconto_corrente = {}
                         opzioni = ["🟢 Presente", "🔴 Assente", "🟡 Infortunato"]
                         
-                        for ragazzo in st.session_state.db["ragazzi"]:
+                        for ragazzo in ordina_giocatori(st.session_state.db["ragazzi"]):
                             col_nome, col_stato = st.columns([1, 2])
-                            with col_nome: st.write(f"**{ragazzo}**")
+                            with col_nome: st.write(f"**{cognome_nome(ragazzo)}**")
                             with col_stato:
                                 stato_precedente = appello_evento.get(ragazzo, opzioni[0])
                                 indice_default = opzioni.index(stato_precedente) if stato_precedente in opzioni else 0
@@ -294,7 +378,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     convocati_list = []
                     riga_num = 1
                     
-                    for idx, ragazzo in enumerate(st.session_state.db["ragazzi"]):
+                    for ragazzo in ordina_giocatori(st.session_state.db["ragazzi"]):
                         stato = appello_evento.get(ragazzo, "🟢 Convocato")
                         is_convocato = "Convocato" in stato and "Non" not in stato
                         
@@ -304,70 +388,88 @@ elif menu == "🟢 Calendario e Convocazioni":
                         if is_convocato:
                             convocati_list.append(ragazzo)
                             
-                        righe_giocatori += f"<tr><td style='border: 1px solid black; padding: 5px;'>{riga_num}</td><td style='border: 1px solid black; padding: 5px; text-align: left;'>{ragazzo}</td><td style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
+                        righe_giocatori += f"<tr><td width='10%' style='border: 1px solid black; padding: 5px;'>{riga_num}</td><td width='50%' style='border: 1px solid black; padding: 5px; text-align: left;'>{cognome_nome(ragazzo)}</td><td width='20%' style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td width='20%' style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
                         riga_num += 1
                     
                     righe_formazione = ""
                     if titolari_evento:
-                        titolari_validi = [t for t in titolari_evento if t in convocati_list]
+                        titolari_validi = ordina_giocatori([t for t in titolari_evento if t in convocati_list])
                         for t in titolari_validi:
                             num = numeri_evento.get(t, '-')
-                            parts = t.split(" ", 1)
-                            nome_t = parts[0]
-                            cognome_t = parts[1] if len(parts) > 1 else ""
+                            nome_t, cognome_t = dividi_nome(t)
                             
                             badge = ""
-                            if t == capitano_evento: badge = " <span style='color: blue; font-weight: bold;'>(C)</span>"
-                            elif t == vice_evento: badge = " <span style='color: green; font-weight: bold;'>(VC)</span>"
+                            if t == capitano_evento: badge = f" <span style='color: {COLORE_BLU}; font-weight: bold;'>(C)</span>"
+                            elif t == vice_evento: badge = f" <span style='color: {COLORE_VERDE}; font-weight: bold;'>(VC)</span>"
                             
-                            righe_formazione += f"<tr><td style='border: 1px solid black; padding: 5px; font-weight: bold; width: 10%;'>{num}</td><td style='border: 1px solid black; padding: 5px; text-align: left; width: 45%;'>{nome_t}</td><td style='border: 1px solid black; padding: 5px; text-align: left; width: 45%;'>{cognome_t}{badge}</td></tr>"
+                            righe_formazione += f"<tr><td width='10%' style='border: 1px solid black; padding: 5px; font-weight: bold;'>{num}</td><td width='45%' style='border: 1px solid black; padding: 5px; text-align: left;'>{cognome_t}</td><td width='45%' style='border: 1px solid black; padding: 5px; text-align: left;'>{nome_t}{badge}</td></tr>"
                     else:
                         righe_formazione = "<tr><td colspan='3' style='border: 1px solid black; padding: 5px; font-style: italic;'>Nessun titolare selezionato</td></tr>"
                     
                     logo_immagine = get_logo_html()
                     
-                    # HTML Convocazioni
-                    html_distinta = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
-<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
+                    # HTML Convocazioni raggruppato in Master Table per evitare rotture nei bordi esterni
+                    html_distinta = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%;'>
+<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU};'>
 <tr>
-<td rowspan='6' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
-<td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px; background-color: #f0f0f0;'>CONVOCAZIONI</td>
+<td style='padding: 0; border: none;'>
+    <table style='width: 100%; border-collapse: collapse; text-align: center;'>
+        <tr>
+            <td width='30%' style='border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
+            <td width='70%' style='border: 1px solid black; padding: 0;'>
+                <table style='width: 100%; border-collapse: collapse; text-align: center;'>
+                    <tr><td style='padding: 5px; font-weight: bold; font-size: 16px; background-color: {COLORE_BLU_CHIARO}; border-bottom: 1px solid black;'>CONVOCAZIONI</td></tr>
+                    <tr><td style='padding: 5px; border-bottom: 1px solid black;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
+                    <tr><td style='padding: 5px; font-weight: bold; border-bottom: 1px solid black;'>TIPO PARTITA: {tipo_partita}</td></tr>
+                    <tr><td style='padding: 5px; border-bottom: 1px solid black;'>DATA: {data_f}</td></tr>
+                    <tr><td style='padding: 5px; border-bottom: 1px solid black;'>ORA PARTITA: {ev.get("ora_partita", "___")} - ORA RITROVO: {ev.get("ora_convocazione", "___")}</td></tr>
+                    <tr><td style='padding: 5px; font-weight: bold; background-color: {COLORE_BLU_CHIARO};'>LUOGO: {ind_campo}</td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+    <table style='width: 100%; border-collapse: collapse; text-align: center; border-top: none;'>
+        <tr style='font-weight: bold; background-color: {COLORE_BLU_CHIARO};'>
+            <td width='10%' style='border: 1px solid black; padding: 5px;'>N°</td>
+            <td width='50%' style='border: 1px solid black; padding: 5px;'>Cognome e Nome</td>
+            <td width='20%' style='border: 1px solid black; padding: 5px;' title='Convocato'>C</td>
+            <td width='20%' style='border: 1px solid black; padding: 5px;' title='Non Convocato'>NC</td>
+        </tr>
+        {righe_giocatori}
+    </table>
+</td>
 </tr>
-<tr><td style='border: 1px solid black; padding: 5px;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
-<tr><td style='border: 1px solid black; padding: 5px; font-weight: bold;'>TIPO PARTITA: {tipo_partita}</td></tr>
-<tr><td style='border: 1px solid black; padding: 5px;'>DATA: {data_f}</td></tr>
-<tr><td style='border: 1px solid black; padding: 5px;'>ORA PARTITA: {ev.get("ora_partita", "___")} - ORA RITROVO: {ev.get("ora_convocazione", "___")}</td></tr>
-<tr><td style='border: 1px solid black; font-weight: bold; padding: 5px; background-color: #f9f9f9;'>LUOGO: {ind_campo}</td></tr>
-</table>
-<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black; border-top: none;'>
-<tr style='font-weight: bold; background-color: #f0f0f0;'>
-<td style='border: 1px solid black; padding: 5px; width: 10%;'>N°</td>
-<td style='border: 1px solid black; padding: 5px; width: 50%;'>Nome e Cognome</td>
-<td style='border: 1px solid black; padding: 5px; width: 20%;' title='Convocato'>C</td>
-<td style='border: 1px solid black; padding: 5px; width: 20%;' title='Non Convocato'>NC</td>
-</tr>
-{righe_giocatori}
 </table>
 </div>"""
 
-                    # HTML Formazione
-                    html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
-<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black;'>
+                    # HTML Formazione raggruppato in Master Table
+                    html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%;'>
+<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_VERDE};'>
 <tr>
-<td rowspan='4' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
-<td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px; background-color: #f0f0f0;'>FORMAZIONE UFFICIALE</td>
+<td style='padding: 0; border: none;'>
+    <table style='width: 100%; border-collapse: collapse; text-align: center;'>
+        <tr>
+            <td width='30%' style='border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
+            <td width='70%' style='border: 1px solid black; padding: 0;'>
+                <table style='width: 100%; border-collapse: collapse; text-align: center;'>
+                    <tr><td style='padding: 5px; font-weight: bold; font-size: 16px; background-color: {COLORE_VERDE_CHIARO}; border-bottom: 1px solid black;'>FORMAZIONE UFFICIALE</td></tr>
+                    <tr><td style='padding: 5px; border-bottom: 1px solid black;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
+                    <tr><td style='padding: 5px; font-weight: bold; border-bottom: 1px solid black;'>TIPO PARTITA: {tipo_partita}</td></tr>
+                    <tr><td style='padding: 5px;'>DATA: {data_f}</td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+    <table style='width: 100%; border-collapse: collapse; text-align: center; border-top: none;'>
+        <tr style='font-weight: bold; background-color: {COLORE_VERDE_CHIARO};'>
+            <td width='10%' style='border: 1px solid black; padding: 5px;'>N°</td>
+            <td width='45%' style='border: 1px solid black; padding: 5px;'>Cognome</td>
+            <td width='45%' style='border: 1px solid black; padding: 5px;'>Nome</td>
+        </tr>
+        {righe_formazione}
+    </table>
+</td>
 </tr>
-<tr><td style='border: 1px solid black; padding: 5px;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
-<tr><td style='border: 1px solid black; padding: 5px; font-weight: bold;'>TIPO PARTITA: {tipo_partita}</td></tr>
-<tr><td style='border: 1px solid black; padding: 5px;'>DATA: {data_f}</td></tr>
-</table>
-<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid black; border-top: none;'>
-<tr style='font-weight: bold; background-color: #f0f0f0;'>
-<td style='border: 1px solid black; padding: 5px; width: 10%;'>N°</td>
-<td style='border: 1px solid black; padding: 5px; width: 45%;'>Nome</td>
-<td style='border: 1px solid black; padding: 5px; width: 45%;'>Cognome</td>
-</tr>
-{righe_formazione}
 </table>
 </div>"""
                     
@@ -384,12 +486,12 @@ elif menu == "🟢 Calendario e Convocazioni":
                     whatsapp_text += f"\n*ELENCO CONVOCATI:*\n"
                     if convocati_list:
                         for c in convocati_list:
-                            whatsapp_text += f"✅ {c}\n"
+                            whatsapp_text += f"✅ {cognome_nome(c)}\n"
                     else:
                         whatsapp_text += "*(Nessun convocato ancora selezionato)*\n"
                     whatsapp_text += "\n*Forza USO UNITED!* 💙💚"
 
-                    tab1, tab_formazione, tab2, tab3 = st.tabs(["⚙️ Compila Elenco", "⚽ Formazione e Dati Partita", "📄 Convocazioni Ufficiali", "📱 Messaggio WhatsApp"])
+                    tab1, tab2, tab_formazione, tab3 = st.tabs(["⚙️ Compila Elenco", "📄 Convocazioni Ufficiali", "⚽ Formazione e Dati Partita", "📱 Messaggio WhatsApp"])
                     
                     with tab1:
                         if not st.session_state.db["ragazzi"]:
@@ -399,9 +501,9 @@ elif menu == "🟢 Calendario e Convocazioni":
                             resoconto_corrente = {}
                             opzioni = ["🟢 Convocato", "🔴 Non Convocato"]
                             
-                            for ragazzo in st.session_state.db["ragazzi"]:
+                            for ragazzo in ordina_giocatori(st.session_state.db["ragazzi"]):
                                 col_nome, col_stato = st.columns([1, 2])
-                                with col_nome: st.write(f"**{ragazzo}**")
+                                with col_nome: st.write(f"**{cognome_nome(ragazzo)}**")
                                 with col_stato:
                                     stato_precedente = appello_evento.get(ragazzo, opzioni[0])
                                     indice_default = opzioni.index(stato_precedente) if stato_precedente in opzioni else 0
@@ -434,12 +536,9 @@ elif menu == "🟢 Calendario e Convocazioni":
                             titolari_salvati = st.session_state.db["storico_titolari"].get(ev["id"], [])
                             numeri_salvati = st.session_state.db["storico_numeri"].get(ev["id"], {})
 
-                            # --- Costruzione tabella dati (sostituisce il vecchio layout a colonne) ---
                             righe_tabella = []
                             for c in convocati_list:
-                                parts = c.split(" ", 1)
-                                nome_str = parts[0]
-                                cogn_str = parts[1] if len(parts) > 1 else ""
+                                nome_str, cogn_str = dividi_nome(c)
                                 try:
                                     num_prec = int(numeri_salvati.get(c, 0)) if str(numeri_salvati.get(c, "")).strip() != "" else 0
                                 except ValueError:
@@ -452,37 +551,36 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 righe_tabella.append({
                                     "Giocatore": c,
                                     "N°": num_prec,
-                                    "Nome": nome_str,
                                     "Cognome": cogn_str,
+                                    "Nome": nome_str,
                                     "Tit.": c in titolari_salvati,
                                     "Gol": gol_prec,
                                 })
 
                             df_formazione = pd.DataFrame(righe_tabella)
 
-                            st.caption("Tocca una cella per modificarla. La tabella si adatta automaticamente allo schermo, anche su smartphone.")
+                            st.caption("Tocca una cella per modificarla. La tabella si adatta automaticamente allo schermo, anche su smartphone. N° a 0 = numero di maglia non ancora assegnato (nel documento ufficiale comparirà '-').")
 
                             df_edit = st.data_editor(
                                 df_formazione,
                                 key=f"data_editor_form_{ev['id']}",
                                 hide_index=True,
                                 use_container_width=True,
-                                column_order=["N°", "Nome", "Cognome", "Tit.", "Gol"],
+                                column_order=["N°", "Cognome", "Nome", "Tit.", "Gol"],
                                 column_config={
                                     "N°": st.column_config.NumberColumn("N°", min_value=0, max_value=99, step=1, width="small", format="%d"),
-                                    "Nome": st.column_config.TextColumn("Nome", disabled=True, width="medium"),
                                     "Cognome": st.column_config.TextColumn("Cognome", disabled=True, width="medium"),
+                                    "Nome": st.column_config.TextColumn("Nome", disabled=True, width="medium"),
                                     "Tit.": st.column_config.CheckboxColumn("Tit.", width="small"),
                                     "Gol": st.column_config.NumberColumn("Gol", min_value=0, max_value=99, step=1, width="small", format="%d"),
                                 },
                             )
 
-                            # Riallineo l'indice del giocatore alle righe restituite dal data_editor
                             df_edit = df_edit.copy()
                             df_edit["Giocatore"] = df_formazione["Giocatore"].values
 
                             nuovi_titolari = df_edit.loc[df_edit["Tit."] == True, "Giocatore"].tolist()
-                            nuovi_numeri = {row["Giocatore"]: str(int(row["N°"])) for _, row in df_edit.iterrows()}
+                            nuovi_numeri = {row["Giocatore"]: str(int(row["N°"])) for _, row in df_edit.iterrows() if int(row["N°"]) > 0}
                             resoconto_gol = {row["Giocatore"]: int(row["Gol"]) for _, row in df_edit.iterrows()}
 
                             numero_titolari = len(nuovi_titolari)
@@ -503,9 +601,9 @@ elif menu == "🟢 Calendario e Convocazioni":
                             
                             col_cap, col_vice = st.columns(2)
                             with col_cap:
-                                input_capitano = st.selectbox("Capitano (C)", opzioni_fasce, index=idx_cap, key=f"cap_{ev['id']}")
+                                input_capitano = st.selectbox("Capitano (C)", opzioni_fasce, index=idx_cap, key=f"cap_{ev['id']}", format_func=lambda x: cognome_nome(x) if x != "Nessuno" else x)
                             with col_vice:
-                                input_vice = st.selectbox("Vice-Capitano (VC)", opzioni_fasce, index=idx_vice, key=f"vice_{ev['id']}")
+                                input_vice = st.selectbox("Vice-Capitano (VC)", opzioni_fasce, index=idx_vice, key=f"vice_{ev['id']}", format_func=lambda x: cognome_nome(x) if x != "Nessuno" else x)
                             
                             st.write("")
                             if st.button("💾 Salva Formazione e Dati", key=f"btn_salva_form_{ev['id']}", type="primary"):
@@ -536,17 +634,38 @@ elif menu == "🟢 Calendario e Convocazioni":
                     with tab2:
                         st.markdown(html_distinta, unsafe_allow_html=True)
                         st.write("")
-                        st.download_button(
-                            label="⬇️ Scarica Convocazioni (.html)",
-                            data=html_distinta,
-                            file_name=f"Convocazioni_{sq_casa}_{sq_trasf}.html",
-                            mime="text/html",
-                            key=f"dl_html_conv_{ev['id']}"
-                        )
+                        logo_immagine_pdf = get_logo_html(per_pdf=True)
+                        html_distinta_pdf = html_distinta.replace(logo_immagine, logo_immagine_pdf)
+                        pdf_convocazioni = genera_pdf(html_distinta_pdf)
+                        if pdf_convocazioni:
+                            st.download_button(
+                                label="⬇️ Scarica Convocazioni (PDF)",
+                                data=pdf_convocazioni,
+                                file_name=f"Convocazioni_{sq_casa}_{sq_trasf}.pdf",
+                                mime="application/pdf",
+                                key=f"dl_pdf_conv_{ev['id']}"
+                            )
+                        else:
+                            st.warning("⚠️ Non sono riuscito a generare il PDF. Assicurati che xhtml2pdf sia installato.")
+                            st.download_button(
+                                label="⬇️ Scarica Convocazioni (.html)",
+                                data=html_distinta,
+                                file_name=f"Convocazioni_{sq_casa}_{sq_trasf}.html",
+                                mime="text/html",
+                                key=f"dl_html_conv_fallback_{ev['id']}"
+                            )
+                        st.caption("📎 WhatsApp non permette di allegare automaticamente un file da un sito esterno: scarica il PDF qui sopra, poi allegalo manualmente nella chat. Nella scheda '📱 Messaggio WhatsApp' trovi un pulsante per aprire subito la chat con il testo già pronto.")
 
                     with tab3:
                         st.code(whatsapp_text, language="markdown")
                         st.caption("💡 Clicca sull'iconcina dei foglietti in alto a destra in questo riquadro nero per copiare tutto il testo in un colpo solo e incollarlo su WhatsApp!")
+
+                        st.write("---")
+                        wa_url = "https://api.whatsapp.com/send?text=" + urllib.parse.quote(whatsapp_text)
+                        if hasattr(st, "link_button"):
+                            st.link_button("📲 Apri WhatsApp con questo messaggio", wa_url)
+                        else:
+                            st.markdown(f"[📲 Apri WhatsApp con questo messaggio]({wa_url})")
 
     st.write("---")
     st.subheader("➕ Inserisci una Nuova Partita")
@@ -597,7 +716,7 @@ elif menu == "📊 Statistiche Allenamenti":
         st.info("📊 Nessun dato di allenamento registrato.")
     else:
         tabella_all = []
-        for ragazzo in st.session_state.db["ragazzi"]:
+        for ragazzo in ordina_giocatori(st.session_state.db["ragazzi"]):
             presenti, assenti, infortunati = 0, 0, 0
             for ev_id, appello in storico.items():
                 if ev_id in id_allenamenti:
@@ -608,7 +727,7 @@ elif menu == "📊 Statistiche Allenamenti":
             
             pct = (presenti / totale_allenamenti) * 100 if totale_allenamenti > 0 else 0.00
             tabella_all.append({
-                "Giocatore": ragazzo,
+                "Giocatore": cognome_nome(ragazzo),
                 "🟢 Presenze": presenti,
                 "🔴 Assenze": assenti,
                 "🟡 Infortuni": infortunati,
@@ -617,7 +736,7 @@ elif menu == "📊 Statistiche Allenamenti":
         st.table(tabella_all)
         
         if tabella_all:
-            html_all = "<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Allenamenti</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: #f0f0f0;'>Giocatore</th><th style='padding:8px; background-color: #f0f0f0;'>🟢 Presenze</th><th style='padding:8px; background-color: #f0f0f0;'>🔴 Assenze</th><th style='padding:8px; background-color: #f0f0f0;'>🟡 Infortuni</th><th style='padding:8px; background-color: #f0f0f0;'>📈 % Presenza</th></tr>"
+            html_all = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Allenamenti</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>Giocatore</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🟢 Presenze</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🔴 Assenze</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🟡 Infortuni</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>📈 % Presenza</th></tr>"
             for row in tabella_all:
                 html_all += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Presenze']}</td><td style='padding:8px;'>{row['🔴 Assenze']}</td><td style='padding:8px;'>{row['🟡 Infortuni']}</td><td style='padding:8px;'>{row['📈 % Presenza']}</td></tr>"
             html_all += "</table></body></html>"
@@ -646,7 +765,7 @@ elif menu == "🏆 Statistiche Giocatori":
         st.info("📊 Nessun dato sulle partite presente in archivio.")
     else:
         tabella_gare = []
-        for ragazzo in st.session_state.db["ragazzi"]:
+        for ragazzo in ordina_giocatori(st.session_state.db["ragazzi"]):
             convocati, non_convocati, presenze_titolare = 0, 0, 0
             for ev_id, appello in storico.items():
                 if ev_id in id_gare:
@@ -665,7 +784,7 @@ elif menu == "🏆 Statistiche Giocatori":
                 gol_tot += st.session_state.db["storico_gol"].get(str(ev_id), {}).get(ragazzo, 0)
 
             tabella_gare.append({
-                "Giocatore": ragazzo,
+                "Giocatore": cognome_nome(ragazzo),
                 "🟢 Convocato": convocati,
                 "🔴 Non Conv.": non_convocati,
                 "👕 Titolare": presenze_titolare,
@@ -676,7 +795,7 @@ elif menu == "🏆 Statistiche Giocatori":
         st.table(tabella_gare)
         
         if tabella_gare:
-            html_giocatori = "<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Giocatori</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: #f0f0f0;'>Giocatore</th><th style='padding:8px; background-color: #f0f0f0;'>🟢 Convocato</th><th style='padding:8px; background-color: #f0f0f0;'>🔴 Non Conv.</th><th style='padding:8px; background-color: #f0f0f0;'>👕 Titolare</th><th style='padding:8px; background-color: #f0f0f0;'>📈 % Conv.</th><th style='padding:8px; background-color: #f0f0f0;'>🏅 % Titolare</th><th style='padding:8px; background-color: #f0f0f0;'>⚽ Gol Fatti</th></tr>"
+            html_giocatori = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Giocatori</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>Giocatore</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🟢 Convocato</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🔴 Non Conv.</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>👕 Titolare</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>📈 % Conv.</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🏅 % Titolare</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>⚽ Gol Fatti</th></tr>"
             for row in tabella_gare:
                 html_giocatori += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Convocato']}</td><td style='padding:8px;'>{row['🔴 Non Conv.']}</td><td style='padding:8px;'>{row['👕 Titolare']}</td><td style='padding:8px;'>{row['📈 % Conv.']}</td><td style='padding:8px;'>{row['🏅 % Titolare']}</td><td style='padding:8px;'>{row['⚽ Gol Fatti']}</td></tr>"
             html_giocatori += "</table></body></html>"
@@ -831,13 +950,15 @@ elif menu == "🏃 Gestione Rosa":
         st.warning("La Rosa è vuota!")
     else:
         st.markdown("### 📋 Elenco Giocatori")
-        st.caption("Tocca una cella per modificarla in tabella. Spunta '🗑️ Elimina' sulle righe da rimuovere, poi premi 'Salva Modifiche Rosa'.")
+        st.caption("Ordine alfabetico per Cognome. Tocca una cella per modificarla, spunta '🗑️ Elimina' sulle righe da rimuovere, poi premi 'Salva Modifiche Rosa'.")
 
         ruoli_disp = ["Portiere", "Difensore", "Centrocampista", "Attaccante", "Non definito"]
-        nomi_originali = list(st.session_state.db["ragazzi"])
+        nomi_originali = ordina_giocatori(st.session_state.db["ragazzi"])
 
         righe_rosa = []
         for ragazzo in nomi_originali:
+            nome_r, cognome_r = dividi_nome(ragazzo)
+
             nascita_prec = st.session_state.db.get("anagrafica_nascita", {}).get(ragazzo, "")
             if nascita_prec:
                 try:
@@ -852,7 +973,8 @@ elif menu == "🏃 Gestione Rosa":
                 ruolo_prec = "Non definito"
 
             righe_rosa.append({
-                "Nome e Cognome": ragazzo,
+                "Cognome": cognome_r,
+                "Nome": nome_r,
                 "Data di Nascita": d_obj,
                 "Ruolo": ruolo_prec,
                 "🗑️ Elimina": False,
@@ -860,18 +982,16 @@ elif menu == "🏃 Gestione Rosa":
 
         df_rosa = pd.DataFrame(righe_rosa)
 
-        # La chiave include una "versione": dopo ogni salvataggio la incrementiamo per
-        # forzare un widget pulito e non farci reincollare in tabella modifiche vecchie
-        # (es. un'eliminazione già salvata) su righe che nel frattempo si sono spostate.
         df_rosa_edit = st.data_editor(
             df_rosa,
             key=f"data_editor_rosa_{st.session_state.rosa_editor_version}",
             hide_index=True,
             use_container_width=True,
             num_rows="fixed",
-            column_order=["Nome e Cognome", "Data di Nascita", "Ruolo", "🗑️ Elimina"],
+            column_order=["Cognome", "Nome", "Data di Nascita", "Ruolo", "🗑️ Elimina"],
             column_config={
-                "Nome e Cognome": st.column_config.TextColumn("Nome e Cognome", width="medium"),
+                "Cognome": st.column_config.TextColumn("Cognome", width="medium"),
+                "Nome": st.column_config.TextColumn("Nome", width="medium"),
                 "Data di Nascita": st.column_config.DateColumn("Data di Nascita", format="DD/MM/YYYY", width="small"),
                 "Ruolo": st.column_config.SelectboxColumn("Ruolo", options=ruoli_disp, width="medium"),
                 "🗑️ Elimina": st.column_config.CheckboxColumn("🗑️ Elimina", width="small"),
@@ -879,21 +999,21 @@ elif menu == "🏃 Gestione Rosa":
         )
 
         if st.button("💾 Salva Modifiche Rosa", key="btn_salva_rosa", type="primary"):
-            # --- Validazione preliminare: nessun nome vuoto, nessun duplicato ---
             nomi_superstiti = []
             errori = []
             for idx, row in df_rosa_edit.iterrows():
                 if bool(row["🗑️ Elimina"]):
                     continue
-                nome_pulito = str(row["Nome e Cognome"]).strip()
+                nome_pulito = str(row["Nome"]).strip()
+                cognome_pulito = str(row["Cognome"]).strip()
                 if nome_pulito == "":
-                    errori.append(f"Riga {idx + 1}: il nome non può essere vuoto.")
+                    errori.append(f"Riga {idx + 1}: il campo 'Nome' non può essere vuoto.")
                     continue
-                nomi_superstiti.append(nome_pulito)
+                nomi_superstiti.append(f"{nome_pulito} {cognome_pulito}".strip())
 
             duplicati = {n for n in nomi_superstiti if nomi_superstiti.count(n) > 1}
             if duplicati:
-                errori.append(f"Nomi duplicati non ammessi: {', '.join(sorted(duplicati))}.")
+                errori.append(f"Giocatori duplicati non ammessi: {', '.join(sorted(cognome_nome(d) for d in duplicati))}.")
 
             if errori:
                 for e in errori:
@@ -910,12 +1030,13 @@ elif menu == "🏃 Gestione Rosa":
                             del st.session_state.db["anagrafica_nascita"][nome_originale]
                         continue
 
-                    nome_nuovo = str(row["Nome e Cognome"]).strip()
+                    nome_pulito = str(row["Nome"]).strip()
+                    cognome_pulito = str(row["Cognome"]).strip()
+                    nome_nuovo = f"{nome_pulito} {cognome_pulito}".strip()
                     nascita_nuova = row["Data di Nascita"]
                     ruolo_nuovo = row["Ruolo"]
 
                     if nome_nuovo != nome_originale:
-                        # Propaga la rinomina a tutto lo storico, come nel comportamento precedente
                         for _, appello in st.session_state.db["storico_presenze"].items():
                             if nome_originale in appello:
                                 appello[nome_nuovo] = appello.pop(nome_originale)
@@ -943,7 +1064,7 @@ elif menu == "🏃 Gestione Rosa":
                     st.session_state.db.setdefault("anagrafica_nascita", {})[nome_nuovo] = nascita_str
                     nuova_lista_ragazzi.append(nome_nuovo)
 
-                st.session_state.db["ragazzi"] = nuova_lista_ragazzi
+                st.session_state.db["ragazzi"] = ordina_giocatori(nuova_lista_ragazzi)
                 st.session_state.rosa_editor_version += 1
                 salvare_dati()
                 st.success("✅ Rosa aggiornata con successo!")
@@ -951,16 +1072,22 @@ elif menu == "🏃 Gestione Rosa":
 
     st.subheader("➕ Aggiungi un nuovo giocatore")
     with st.container():
-        col_n, col_d, col_r = st.columns([2.5, 1.5, 1.5])
-        with col_n: nuovo_nome_ins = st.text_input("Nome e Cognome:", key="nuovo_ins_input")
+        col_c, col_n, col_d, col_r = st.columns([2, 2, 1.5, 1.5])
+        with col_c: nuovo_cognome_ins = st.text_input("Cognome:", key="nuovo_ins_cognome")
+        with col_n: nuovo_nome_ins = st.text_input("Nome:", key="nuovo_ins_nome")
         with col_d: nuova_nascita_ins = st.date_input("Data di Nascita", datetime.date(2014, 1, 1))
         with col_r: nuovo_ruolo_ins = st.selectbox("Ruolo", ["Portiere", "Difensore", "Centrocampista", "Attaccante", "Non definito"])
         
         if st.button("Inserisci in Squadra", type="primary"):
-            if nuovo_nome_ins.strip() != "" and nuovo_nome_ins.strip() not in st.session_state.db["ragazzi"]:
-                st.session_state.db["ragazzi"].append(nuovo_nome_ins.strip())
-                st.session_state.db.setdefault("anagrafica_ruolo", {})[nuovo_nome_ins.strip()] = nuovo_ruolo_ins
-                st.session_state.db.setdefault("anagrafica_nascita", {})[nuovo_nome_ins.strip()] = str(nuova_nascita_ins)
+            nome_completo_ins = f"{nuovo_nome_ins.strip()} {nuovo_cognome_ins.strip()}".strip()
+            if nuovo_nome_ins.strip() == "":
+                st.error("Il campo 'Nome' non può essere vuoto.")
+            elif nome_completo_ins in st.session_state.db["ragazzi"]:
+                st.error(f"'{cognome_nome(nome_completo_ins)}' è già presente in rosa.")
+            else:
+                st.session_state.db["ragazzi"].append(nome_completo_ins)
+                st.session_state.db.setdefault("anagrafica_ruolo", {})[nome_completo_ins] = nuovo_ruolo_ins
+                st.session_state.db.setdefault("anagrafica_nascita", {})[nome_completo_ins] = str(nuova_nascita_ins)
                 salvare_dati()
-                st.success(f"⚽ {nuovo_nome_ins.strip()} aggiunto alla rosa!")
+                st.success(f"⚽ {cognome_nome(nome_completo_ins)} aggiunto alla rosa!")
                 st.rerun()
