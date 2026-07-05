@@ -29,6 +29,7 @@ for h in range(9, 19):
 
 # Opzioni campi per le partite in casa
 OPZIONI_CAMPI_CASA = [
+    "Campo Prealpino Santa Giulia Via del brolo 7",
     "Campo Comunale Coltrini Parco Urbano Bovezzo"
 ]
 
@@ -278,8 +279,7 @@ if menu == "🔵 Calendario Allenamenti":
                     wa_text = f"Ciao a tutti,\n\n🔵 *PROSSIMO ALLENAMENTO* 🔵\n📅 *Data:* {data_f}\n"
                     if ev.get('ora', ''): wa_text += f"⏰ *Ora:* {ev['ora']}\n"
                     if ev.get('indirizzo', ''): wa_text += f"📍 *Luogo:* {ev['indirizzo']}\n"
-                    if ev.get("nota", ""): wa_text += f"📝 *Note:* {ev['nota']}\n"
-                    wa_text += "\nTutte le indicazioni segnate.\n*Forza USO UNITED!* 💙💚"
+                    wa_text += f"📝 *Note:* {ev.get('nota', '')}\n"
                     st.code(wa_text, language="markdown")
                     wa_url = "https://api.whatsapp.com/send?text=" + urllib.parse.quote(wa_text)
                     if hasattr(st, "link_button"):
@@ -539,7 +539,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     whatsapp_text += f"⏰ *Ora Partita:* {ev.get('ora_partita', '___')}\n"
                     whatsapp_text += f"📍 *Ora Ritrovo:* {ev.get('ora_convocazione', '___')}\n"
                     whatsapp_text += f"🏟️ *Luogo:* {ind_campo}\n"
-                    if note_agg: whatsapp_text += f"📝 *Note:* {note_agg}\n"
+                    whatsapp_text += f"📝 *Note:* {note_agg}\n"
                         
                     whatsapp_text += f"\n*ELENCO CONVOCATI:*\n"
                     if convocati_list:
@@ -547,7 +547,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                             whatsapp_text += f"✅ {cognome_nome(c)}\n"
                     else:
                         whatsapp_text += "*(Nessun convocato ancora selezionato)*\n"
-                    whatsapp_text += "\n*Forza USO UNITED!* 💙💚"
 
                     tab1, tab2, tab_formazione, tab3 = st.tabs(["⚙️ Compila Elenco", "📄 Convocazioni Ufficiali", "⚽ Formazione e Dati Partita", "📱 Messaggio WhatsApp"])
                     
