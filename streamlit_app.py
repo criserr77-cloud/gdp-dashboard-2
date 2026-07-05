@@ -550,17 +550,26 @@ elif menu == "🟢 Calendario e Convocazioni":
                     if note_agg and note_agg.strip(): whatsapp_text += f"📝 *Note:* {note_agg.strip()}\n"
                         
                     whatsapp_text += f"\n*TABELLA CONVOCAZIONI:*\n"
-                    whatsapp_text += "👤 *Cognome Nome* | *C* | *NC*\n"
+                    whatsapp_text += "```text\n"
+                    
+                    max_len = max([len(cognome_nome(r)) for r in st.session_state.db["ragazzi"]]) if st.session_state.db["ragazzi"] else 15
+                    max_len = max(max_len, 12)
+                    
+                    whatsapp_text += "Cognome Nome".ljust(max_len) + " | C | NC\n"
+                    whatsapp_text += "-" * (max_len + 9) + "\n"
+                    
                     if not st.session_state.db["ragazzi"]:
-                        whatsapp_text += "*(Nessun giocatore in rosa)*\n"
+                        whatsapp_text += "(Nessun giocatore in rosa)\n"
                     else:
                         for ragazzo in ordina_giocatori(st.session_state.db["ragazzi"]):
                             stato = appello_evento.get(ragazzo, "🟢 Convocato")
                             is_convocato = "Convocato" in stato and "Non" not in stato
                             c_mark = "✅" if is_convocato else "➖"
                             nc_mark = "✅" if not is_convocato else "➖"
-                            whatsapp_text += f"▪️ {cognome_nome(ragazzo)} | {c_mark} | {nc_mark}\n"
+                            nome_pad = cognome_nome(ragazzo).ljust(max_len)
+                            whatsapp_text += f"{nome_pad} | {c_mark} | {nc_mark}\n"
                     
+                    whatsapp_text += "```\n"
                     whatsapp_text += "\nGrazie 💚💙"
 
                     tab1, tab2, tab_formazione, tab3 = st.tabs(["⚙️ Compila Elenco", "📄 Convocazioni Ufficiali", "⚽ Formazione e Dati Partita", "📱 Messaggio WhatsApp"])
