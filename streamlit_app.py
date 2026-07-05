@@ -45,57 +45,38 @@ for h in range(14, 22):
 
 import psycopg2
 
-def get_db_connection():
-    try:
-        conn = psycopg2.connect(
-            host=os.environ.get("SQL_HOST"),
-            database=os.environ.get("SQL_DB_NAME"),
-            user=os.environ.get("SQL_USER"),
-            password=os.environ.get("SQL_PASSWORD")
-        )
-        return conn
-    except Exception as e:
-        return None
+import json
+import requests
+import logging
+logging.basicConfig(filename="app.log", level=logging.INFO)
+import streamlit as st
 
-def init_db():
-    conn = get_db_connection()
-    if conn:
-        try:
-            with conn.cursor() as cur:
-                cur.execute('''
-                    CREATE TABLE IF NOT EXISTS app_state (
-                        id SERIAL PRIMARY KEY,
-                        data JSONB NOT NULL
-                    )
-                ''')
-                conn.commit()
-        except Exception:
-            pass
-        finally:
-            conn.close()
+PROJECT_ID = "misterapp-500516"
+API_KEY = "AIzaSyCUKnJF6aIRqgOUiEiLmrd04TF_tJUpnHw"
+URL = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents/misterapp/state?key={API_KEY}"
 
 def caricare_dati():
-    init_db()
-    conn = get_db_connection()
-    if conn:
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT data FROM app_state ORDER BY id DESC LIMIT 1")
-                row = cur.fetchone()
-                if row:
-                    dati = row[0]
-                    if isinstance(dati, str):
-                        import json
-                        dati = json.loads(dati)
-                    for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", 
-                              "storico_numeri", "storico_gol", "storico_risultati", "anagrafica_ruolo", 
-                              "anagrafica_nascita", "storico_capitano", "storico_vicecapitano"]:
-                        if k not in dati: dati[k] = {}
-                    return dati
-        except Exception:
-            pass 
-        finally:
-            conn.close()
+    import logging
+    try:
+        logging.info("TENTATIVO DI CARICAMENTO")
+        resp = requests.get(URL)
+        logging.info(f"CARICAMENTO STATUS: {resp.status_code}")
+        if resp.status_code == 200:
+            doc = resp.json()
+            if 'fields' in doc and 'data' in doc['fields']:
+                dati_str = doc['fields']['data'].get('stringValue', '{}')
+                dati = json.loads(dati_str)
+                for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", 
+                          "storico_numeri", "storico_gol", "storico_risultati", "anagrafica_ruolo", 
+                          "anagrafica_nascita", "storico_capitano", "storico_vicecapitano"]:
+                    if k not in dati: dati[k] = {}
+                if "ragazzi" not in dati: dati["ragazzi"] = ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."]
+                if "eventi" not in dati: dati["eventi"] = []
+                logging.info(f"CARICATI: {len(dati.get('ragazzi', []))} ragazzi, {len(dati.get('eventi', []))} eventi")
+                return dati
+    except Exception as e:
+        logging.error(f"ERRORE CARICAMENTO: {e}")
+        st.error(f"Errore caricamento da Firebase: {e}")
             
     return {
         "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
@@ -106,21 +87,27 @@ def caricare_dati():
         "storico_capitano": {}, "storico_vicecapitano": {}
     }
 
+
 def salvare_dati():
+    import logging
     try:
-        conn = get_db_connection()
-        if conn:
-            import json
-            import streamlit as st
-            stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
-            with conn.cursor() as cur:
-                cur.execute("TRUNCATE TABLE app_state")
-                cur.execute("INSERT INTO app_state (data) VALUES (%s)", (stringa_json,))
-            conn.commit()
-            conn.close()
+        logging.info("TENTATIVO DI SALVATAGGIO")
+        doc = {
+            "fields": {
+                "data": {
+                    "stringValue": json.dumps(st.session_state.db)
+                }
+            }
+        }
+        resp = requests.patch(URL, json=doc)
+        logging.info(f"STATUS: {resp.status_code}")
+        if resp.status_code != 200:
+            logging.error(f"ERRORE FIREBASE: {resp.text}")
+            st.error(f"❌ ERRORE DI SALVATAGGIO FIREBASE: {resp.text}")
+            st.stop()
     except Exception as e:
-        import streamlit as st
-        st.error(f"❌ ERRORE DI SALVATAGGIO DB: {e}")
+        logging.error(f"ECCEZIONE FIREBASE: {e}")
+        st.error(f"❌ ERRORE DI SALVATAGGIO FIREBASE: {e}")
         st.stop()
 
 st.set_page_config(page_title="MisterApp", layout="centered")
