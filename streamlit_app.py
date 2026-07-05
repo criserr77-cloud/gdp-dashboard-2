@@ -30,8 +30,7 @@ for h in range(9, 19):
 # Opzioni campi per le partite in casa
 OPZIONI_CAMPI_CASA = [
     "Campo Prealpino Santa Giulia Via del brolo 7",
-    "Campo Coltrini Comunale",
-    "Parco Urbano Bovezzo"
+    "Campo Comunale Coltrini Parco Urbano Bovezzo"
 ]
 
 def connetti_foglio():
