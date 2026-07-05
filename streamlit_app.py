@@ -552,15 +552,15 @@ elif menu == "🟢 Calendario e Convocazioni":
                     whatsapp_text += f"\n*CONVOCAZIONI:*\n"
                     whatsapp_text += "```\n"
                     
-                    max_len = max([len(cognome_nome(r)) for r in st.session_state.db["ragazzi"]]) if st.session_state.db["ragazzi"] else 12
-                    max_len = min(max_len, 15) # limite per evitare a capo su schermi piccoli
+                    max_len = max([len(cognome_nome(r)) for r in st.session_state.db["ragazzi"]]) if st.session_state.db["ragazzi"] else 11
+                    max_len = min(max_len, 11) # limite più stringente per schermi piccoli
                     
                     header_nome = "Giocatore".ljust(max_len)
-                    whatsapp_text += f" {header_nome} | C  | NC\n"
-                    whatsapp_text += " " + "-" * (max_len + 12) + "\n"
+                    whatsapp_text += f"{header_nome} | C  | NC\n"
+                    whatsapp_text += "-" * (max_len + 11) + "\n"
                     
                     if not st.session_state.db["ragazzi"]:
-                        whatsapp_text += " (Nessun giocatore in rosa)\n"
+                        whatsapp_text += "(Nessun giocatore in rosa)\n"
                     else:
                         for ragazzo in ordina_giocatori(st.session_state.db["ragazzi"]):
                             stato = appello_evento.get(ragazzo, "🟢 Convocato")
@@ -574,7 +574,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             else:
                                 nome_pad = nome.ljust(max_len)
                                 
-                            whatsapp_text += f" {nome_pad} | {c_mark} | {nc_mark}\n"
+                            whatsapp_text += f"{nome_pad} | {c_mark} | {nc_mark}\n"
                     
                     whatsapp_text += "```\n"
                     whatsapp_text += "\nGrazie 💚💙"
