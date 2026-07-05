@@ -3,7 +3,6 @@ import pandas as pd
 import datetime
 import json
 import os
-import io
 import base64
 import urllib.parse
 import gspread
@@ -117,11 +116,11 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 def genera_pdf(html_content):
-    """Converte una stringa HTML in un PDF (bytes). Restituisce None se la generazione fallisce."""
+    """Converte una stringa HTML in un PDF (bytes) usando WeasyPrint. Restituisce None se la generazione fallisce."""
     try:
-        from xhtml2pdf import pisa
+        from weasyprint import HTML
     except ImportError:
-        st.error("Manca la libreria 'xhtml2pdf'. Aggiungila al file requirements.txt e riavvia l'app.")
+        st.error("Manca la libreria 'weasyprint' o le sue dipendenze di sistema. Controlla requirements.txt e packages.txt, poi riavvia l'app.")
         return None
     try:
         documento_completo = f"""<!DOCTYPE html>
@@ -132,7 +131,6 @@ def genera_pdf(html_content):
     @page {{
         size: A4;
         margin: 1.5cm;
-        background-color: white;
     }}
     html, body {{
         background-color: white;
@@ -145,11 +143,7 @@ def genera_pdf(html_content):
 {html_content}
 </body>
 </html>"""
-        buffer = io.BytesIO()
-        risultato = pisa.CreatePDF(src=documento_completo, dest=buffer)
-        if risultato.err:
-            return None
-        return buffer.getvalue()
+        return HTML(string=documento_completo).write_pdf()
     except Exception as e:
         st.error(f"Errore nella generazione del PDF: {e}")
         return None
