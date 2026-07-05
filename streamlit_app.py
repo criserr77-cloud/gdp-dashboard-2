@@ -43,84 +43,48 @@ for h in range(14, 22):
     orari_allenamento.append(f"{h:02d}:00")
     orari_allenamento.append(f"{h:02d}:30")
 
-import psycopg2
-
-def get_db_connection():
+def connetti_foglio():
     try:
-        conn = psycopg2.connect(
-            host=os.environ.get("SQL_HOST"),
-            database=os.environ.get("SQL_DB_NAME"),
-            user=os.environ.get("SQL_USER"),
-            password=os.environ.get("SQL_PASSWORD")
-        )
-        return conn
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(st.secrets["gcp_service_account"]), scope)
+        client = gspread.authorize(creds)
+        return client.open_by_key(ID_FOGLIO_GOOGLE).sheet1
     except Exception as e:
+        st.error(f"Errore connessione: {e}")
         return None
 
-def init_db():
-    conn = get_db_connection()
-    if conn:
-        try:
-            with conn.cursor() as cur:
-                cur.execute('''
-                    CREATE TABLE IF NOT EXISTS app_state (
-                        id SERIAL PRIMARY KEY,
-                        data JSONB NOT NULL
-                    )
-                ''')
-                conn.commit()
-        except Exception:
-            pass
-        finally:
-            conn.close()
-
 def caricare_dati():
-    init_db()
-    conn = get_db_connection()
-    if conn:
+    sheet = connetti_foglio()
+    if sheet:
         try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT data FROM app_state ORDER BY id DESC LIMIT 1")
-                row = cur.fetchone()
-                if row:
-                    dati = row[0]
-                    if isinstance(dati, str):
-                        import json
-                        dati = json.loads(dati)
-                    for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", 
-                              "storico_numeri", "storico_gol", "storico_risultati", "anagrafica_ruolo", 
-                              "anagrafica_nascita", "storico_capitano", "storico_vicecapitano"]:
-                        if k not in dati: dati[k] = {}
-                    return dati
+            contenuto = sheet.acell('A1').value
+            if contenuto:
+                dati = json.loads(contenuto)
+                # Inizializza nuove chiavi se mancano
+                for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", 
+                          "storico_numeri", "storico_gol", "storico_risultati", "anagrafica_ruolo", 
+                          "anagrafica_nascita", "storico_capitano", "storico_vicecapitano"]:
+                    if k not in dati: dati[k] = {}
+                return dati
         except Exception:
             pass 
-        finally:
-            conn.close()
             
     return {
         "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
         "eventi": [],
         "storico_presenze": {}, "storico_minutaggio": {}, "storico_titolari": {},
         "storico_moduli": {}, "storico_numeri": {}, "storico_gol": {}, "storico_risultati": {},
-        "anagrafica_ruolo": {}, "anagrafica_nascita": {},
-        "storico_capitano": {}, "storico_vicecapitano": {}
+        "anagrafica_ruolo": {}, "anagrafica_nascita": {}, "storico_capitano": {}, "storico_vicecapitano": {}
     }
 
 def salvare_dati():
     try:
-        conn = get_db_connection()
-        if conn:
-            import json
-            import streamlit as st
-            stringa_json = json.dumps(st.session_state.db, ensure_ascii=False)
-            with conn.cursor() as cur:
-                cur.execute("TRUNCATE TABLE app_state")
-                cur.execute("INSERT INTO app_state (data) VALUES (%s)", (stringa_json,))
-            conn.commit()
-            conn.close()
+        sheet = connetti_foglio()
+        if sheet:
+            stringa_json = json.dumps(st.session_state.db, ensure_ascii=False, indent=4)
+            sheet.update_acell('A1', stringa_json)
     except Exception as e:
-        import streamlit as st
-        st.error(f"❌ ERRORE DI SALVATAGGIO DB: {e}")
+        st.error(f"❌ ERRORE DI SALVATAGGIO: {e}")
         st.stop()
 
 st.set_page_config(page_title="MisterApp", layout="centered")
