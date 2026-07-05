@@ -1,615 +1,185 @@
-import streamlit as st
-import pandas as pd
-import datetime
-import json
-import os
-import base64
-import urllib.parse
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+import React, { useState } from 'react';
+import { Calendar, Clock, MapPin, Users, Info } from 'lucide-react';
 
-# --- CONFIGURAZIONE GOOGLE SHEETS ---
-ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
+const matchTimes: string[] = [];
+for (let h = 9; h <= 18; h++) {
+  matchTimes.push(`${h.toString().padStart(2, '0')}:00`);
+  if (h !== 18) {
+    matchTimes.push(`${h.toString().padStart(2, '0')}:30`);
+  }
+}
 
-# --- CONFIGURAZIONE REGOLAMENTO ---
-MAX_TITOLARI = 9  # Numero massimo di titolari selezionabili per partita (es. 9 per il calcio a 9)
+const calculateMeetingTime = (time: string) => {
+  if (!time) return "";
+  const [h, m] = time.split(':').map(Number);
+  const meetingH = h - 1;
+  return `${meetingH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+};
 
-# --- CONFIGURAZIONE COLORI (tema Blu/Verde) ---
-COLORE_BLU = "#1565C0"          
-COLORE_BLU_CHIARO = "#E3F2FD"   
-COLORE_VERDE = "#2E7D32"        
-COLORE_VERDE_CHIARO = "#E8F5E9" 
+const homeLocations = [
+  "Campo Prealpino Santa Giulia Via del brolo 7",
+  "Campo Coltrini Comunale",
+  "Parco Urbano Bovezzo"
+];
 
-# Genera gli orari per la selezione (da 09:00 a 18:00)
-orari_partita = []
-for h in range(9, 19):
-    orari_partita.append(f"{h:02d}:00")
-    if h != 18:
-        orari_partita.append(f"{h:02d}:30")
+export default function App() {
+  const [matchTime, setMatchTime] = useState<string>("09:00");
+  const [opponent, setOpponent] = useState<string>("");
+  const [matchType, setMatchType] = useState<"casa" | "trasferta">("casa");
+  const [location, setLocation] = useState<string>(homeLocations[0]);
 
-def connetti_foglio():
-    try:
-        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(st.secrets["gcp_service_account"]), scope)
-        client = gspread.authorize(creds)
-        return client.open_by_key(ID_FOGLIO_GOOGLE).sheet1
-    except Exception as e:
-        st.error(f"Errore connessione: {e}")
-        return None
+  const meetingTime = calculateMeetingTime(matchTime);
 
-def caricare_dati():
-    sheet = connetti_foglio()
-    if sheet:
-        try:
-            contenuto = sheet.acell('A1').value
-            if contenuto:
-                dati = json.loads(contenuto)
-                # Inizializza nuove chiavi se mancano
-                for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", 
-                          "storico_numeri", "storico_gol", "storico_risultati", "anagrafica_ruolo", 
-                          "anagrafica_nascita", "storico_capitano", "storico_vicecapitano"]:
-                    if k not in dati: dati[k] = {}
-                return dati
-        except Exception:
-            pass 
-            
-    return {
-        "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
-        "eventi": [],
-        "storico_presenze": {}, "storico_minutaggio": {}, "storico_titolari": {},
-        "storico_moduli": {}, "storico_numeri": {}, "storico_gol": {}, "storico_risultati": {},
-        "anagrafica_ruolo": {}, "anagrafica_nascita": {}, "storico_capitano": {}, "storico_vicecapitano": {}
-    }
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
+        
+        <div className="bg-blue-600 p-6 text-white text-center">
+          <h1 className="text-2xl font-semibold tracking-tight">Programma Partita</h1>
+          <p className="text-blue-100 mt-1 text-sm">Imposta i dettagli e gli orari del match</p>
+        </div>
 
-def salvare_dati():
-    try:
-        sheet = connetti_foglio()
-        if sheet:
-            stringa_json = json.dumps(st.session_state.db, ensure_ascii=False, indent=4)
-            sheet.update_acell('A1', stringa_json)
-    except Exception as e:
-        st.error(f"❌ ERRORE DI SALVATAGGIO: {e}")
-        st.stop()
+        <div className="p-6 space-y-6">
+          
+          {/* Tipo Partita */}
+          <div className="flex bg-slate-100 p-1 rounded-lg">
+            <button
+              onClick={() => {
+                setMatchType("casa");
+                if (!homeLocations.includes(location)) {
+                  setLocation(homeLocations[0]);
+                }
+              }}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
+                matchType === "casa" 
+                  ? "bg-white text-blue-600 shadow-sm" 
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              In Casa
+            </button>
+            <button
+              onClick={() => {
+                setMatchType("trasferta");
+                if (homeLocations.includes(location)) {
+                  setLocation("");
+                }
+              }}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
+                matchType === "trasferta" 
+                  ? "bg-white text-blue-600 shadow-sm" 
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              In Trasferta
+            </button>
+          </div>
 
-st.set_page_config(page_title="MisterApp", layout="centered")
+          {/* Avversario */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+              <Users className="w-4 h-4 text-slate-400" />
+              Squadra Avversaria
+            </label>
+            <input 
+              type="text" 
+              value={opponent}
+              onChange={(e) => setOpponent(e.target.value)}
+              placeholder="Es. Real Madrid"
+              className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
+            />
+          </div>
 
-# --- CSS DEFINITIVO ---
-st.markdown(f"""
-    <style>
-    .card {{ 
-        background-color: var(--secondary-background-color); 
-        border-radius: 15px; padding: 20px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
-        margin-bottom: 20px; 
-        border: 1px solid {COLORE_VERDE};
-    }}
-    
-    [data-testid="stSidebar"] {{
-        border-right: 2px solid {COLORE_VERDE};
-    }}
-    [data-testid="stSidebar"] div[role="radiogroup"] label {{
-        padding: 18px 20px !important;
-        margin-bottom: 12px !important;
-        background-color: var(--secondary-background-color);
-        border-radius: 12px;
-        border: 1px solid {COLORE_BLU};
-        cursor: pointer;
-        transition: border-color 0.2s ease;
-    }}
-    [data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
-        border-color: {COLORE_VERDE};
-    }}
-    [data-testid="stSidebar"] div[role="radiogroup"] label p {{
-        font-size: 22px !important;
-        font-weight: bold !important;
-        color: var(--text-color) !important;
-    }}
+          {/* Luogo */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-slate-400" />
+              Luogo della Partita
+            </label>
+            {matchType === "casa" ? (
+              <div className="relative">
+                <select
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="w-full appearance-none px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white text-slate-900"
+                >
+                  {homeLocations.map((loc) => (
+                    <option key={loc} value={loc}>
+                      {loc}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                  <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                </div>
+              </div>
+            ) : (
+              <input 
+                type="text" 
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Es. Stadio Olimpico"
+                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
+              />
+            )}
+          </div>
 
-    button[kind="primary"], .stButton button[kind="primary"] {{
-        background: linear-gradient(135deg, {COLORE_BLU} 0%, {COLORE_VERDE} 100%) !important;
-        border: none !important;
-        color: white !important;
-    }}
+          <div className="grid grid-cols-2 gap-4 pt-2">
+            {/* Ora Partita */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-slate-400" />
+                Ora Partita
+              </label>
+              <div className="relative">
+                <select
+                  value={matchTime}
+                  onChange={(e) => setMatchTime(e.target.value)}
+                  className="w-full appearance-none px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white text-slate-900 font-medium"
+                >
+                  {matchTimes.map((time) => (
+                    <option key={time} value={time}>
+                      {time}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                  <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                </div>
+              </div>
+            </div>
 
-    h1, h2 {{
-        border-left: 5px solid {COLORE_VERDE};
-        padding-left: 12px;
-    }}
-    </style>
-""", unsafe_allow_html=True)
+            {/* Ora Ritrovo */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-slate-400" />
+                Ora Ritrovo
+              </label>
+              <div className="w-full px-4 py-2 border border-slate-100 bg-slate-50 rounded-lg text-slate-500 font-medium flex items-center h-[42px] cursor-not-allowed">
+                {meetingTime}
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-blue-50 rounded-lg p-3 flex items-start gap-3 mt-2 border border-blue-100">
+             <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+             <p className="text-sm text-blue-800">
+               L'orario di ritrovo viene calcolato automaticamente <strong>un'ora prima</strong> dell'inizio della partita.
+             </p>
+          </div>
 
-def genera_pdf(html_content):
-    try:
-        from xhtml2pdf import pisa
-        from io import BytesIO
-    except ImportError:
-        st.error("Manca la libreria 'xhtml2pdf'. Aggiungila al file requirements.txt e riavvia l'app.")
-        return None
-    try:
-        documento_completo = f"""<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-    @page {{ size: A4; margin: 1.5cm; }}
-    html, body {{ background-color: white; margin: 0; padding: 0; }}
-</style>
-</head>
-<body>
-{html_content}
-</body>
-</html>"""
-        result = BytesIO()
-        pdf = pisa.pisaDocument(BytesIO(documento_completo.encode("UTF-8")), result)
-        if not pdf.err:
-            return result.getvalue()
-        return None
-    except Exception as e:
-        st.error(f"Errore nella generazione del PDF: {e}")
-        return None
+        </div>
 
-def get_logo_html(per_pdf=False):
-    for ext in ["png", "jpg", "jpeg"]:
-        if os.path.exists(f"stemma.{ext}"):
-            with open(f"stemma.{ext}", "rb") as f:
-                encoded = base64.b64encode(f.read()).decode()
-                if per_pdf:
-                    return f"<img src='data:image/{ext};base64,{encoded}' width='90' height='100' style='width:90px; height:100px;'>"
-                return f"<img src='data:image/{ext};base64,{encoded}' style='max-width: 100px; max-height: 120px; object-fit: contain;'>"
-    if per_pdf:
-        return "<div style='font-size: 40px;'>&#9812;</div>"
-    return "<div style='font-size: 50px;'>🛡️</div>"
+        <div className="p-6 bg-slate-50 border-t border-slate-100">
+          <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors shadow-sm">
+            Salva Partita
+          </button>
+        </div>
 
-def dividi_nome(giocatore):
-    parti = str(giocatore).split(" ", 1)
-    nome = parti[0]
-    cognome = parti[1] if len(parti) > 1 else ""
-    return nome, cognome
-
-def cognome_nome(giocatore):
-    nome, cognome = dividi_nome(giocatore)
-    return f"{cognome} {nome}".strip() if cognome else nome
-
-def ordina_giocatori(lista_giocatori):
-    return sorted(lista_giocatori, key=lambda g: (dividi_nome(g)[1].lower(), dividi_nome(g)[0].lower()))
-
-# Inizializzazione Session State
-if "db" not in st.session_state: 
-    st.session_state.db = caricare_dati()
-    if "anagrafica_ruolo" not in st.session_state.db: st.session_state.db["anagrafica_ruolo"] = {}
-    if "anagrafica_nascita" not in st.session_state.db: st.session_state.db["anagrafica_nascita"] = {}
-    if "storico_capitano" not in st.session_state.db: st.session_state.db["storico_capitano"] = {}
-    if "storico_vicecapitano" not in st.session_state.db: st.session_state.db["storico_vicecapitano"] = {}
-
-if "rosa_editor_version" not in st.session_state: st.session_state.rosa_editor_version = 0
-if "edit_evento" not in st.session_state: st.session_state.edit_evento = None
-
-menu = st.sidebar.radio("Navigazione", [
-    "🔵 Calendario Allenamenti", "🟢 Calendario e Convocazioni", 
-    "📊 Statistiche Allenamenti", "🏆 Statistiche Giocatori", 
-    "📈 Statistiche Squadra", "🏃 Gestione Rosa"
-])
-
-# ==========================================
-# SCHERMATA 1: ALLENAMENTI
-# ==========================================
-if menu == "🔵 Calendario Allenamenti":
-    st.header("🔵 Calendario e Presenze Allenamenti")
-    
-    st.subheader("I tuoi Allenamenti:")
-    eventi_allenamento = [ev for ev in st.session_state.db["eventi"] if ev["tipo"] == "Allenamento"]
-    
-    if not eventi_allenamento:
-        st.info("Nessun allenamento in programma.")
-    else:
-        for ev in eventi_allenamento:
-            if st.session_state.edit_evento == ev["id"]:
-                st.write(f"### ✏️ Modifica Allenamento")
-                curr_date = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").date()
-                mod_data = st.date_input("Data", curr_date, key=f"mod_d_{ev['id']}")
-                mod_nota = st.text_input("Note/Orario", value=ev.get("nota", ""), key=f"mod_n_{ev['id']}")
-                
-                col_s, col_a = st.columns(2)
-                with col_s:
-                    if st.button("💾 Salva", key=f"s_mod_{ev['id']}", type="primary"):
-                        ev["data"] = str(mod_data)
-                        ev["nota"] = mod_nota
-                        st.session_state.edit_evento = None
-                        salvare_dati()
-                        st.rerun()
-                with col_a:
-                    if st.button("❌ Annulla", key=f"a_mod_{ev['id']}"):
-                        st.session_state.edit_evento = None
-                        st.rerun()
-                st.write("---")
-            else:
-                data_f = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").strftime("%d/%m/%Y")
-                titolo_box = f"🔵 Allenamento del {data_f} ({ev.get('nota', '')})"
-                
-                with st.expander(titolo_box):
-                    col_mod, col_del = st.columns([1, 1])
-                    with col_mod:
-                        if st.button("✏️ Modifica", key=f"ed_ev_{ev['id']}"):
-                            st.session_state.edit_evento = ev["id"]
-                            st.rerun()
-                    with col_del:
-                        if st.button("🗑️ Elimina", key=f"del_ev_{ev['id']}"):
-                            st.session_state.db["eventi"] = [e for e in st.session_state.db["eventi"] if e["id"] != ev["id"]]
-                            if ev["id"] in st.session_state.db["storico_presenze"]: del st.session_state.db["storico_presenze"][ev["id"]]
-                            salvare_dati()
-                            st.rerun()
-                    
-                    st.write("---")
-                    st.write(f"#### 📋 Registro Presenze")
-                    
-                    if not st.session_state.db["ragazzi"]:
-                        st.warning("Rosa vuota.")
-                    else:
-                        appello_evento = st.session_state.db["storico_presenze"].get(ev["id"], {})
-                        resoconto_corrente = {}
-                        opzioni = ["🟢 Presente", "🔴 Assente", "🟡 Infortunato"]
-                        
-                        for ragazzo in ordina_giocatori(st.session_state.db["ragazzi"]):
-                            col_nome, col_stato = st.columns([1, 2])
-                            with col_nome: st.write(f"**{cognome_nome(ragazzo)}**")
-                            with col_stato:
-                                stato_precedente = appello_evento.get(ragazzo, opzioni[0])
-                                indice_default = opzioni.index(stato_precedente) if stato_precedente in opzioni else 0
-                                stato = st.radio(f"Stato_{ragazzo}_{ev['id']}", opzioni, index=indice_default, horizontal=True, label_visibility="collapsed", key=f"p_{ragazzo}_{ev['id']}")
-                                resoconto_corrente[ragazzo] = stato
-                        
-                        st.write("")
-                        if st.button("💾 Salva Registro", key=f"btn_salva_{ev['id']}", type="primary"):
-                            st.session_state.db["storico_presenze"][ev["id"]] = resoconto_corrente
-                            salvare_dati()
-                            st.success("Presenze salvate!")
-                            st.rerun()
-
-    st.write("---")
-    st.subheader("➕ Fissa un nuovo Allenamento")
-    nuova_data = st.date_input("Data", datetime.date.today(), key="new_data_all")
-    nuova_nota = st.text_input("Orario e Luogo (es. '17:30 Campo B')", key="new_nota_all")
-    if st.button("Aggiungi Allenamento"):
-        nuovo_id = str(int(max([int(e["id"]) for e in st.session_state.db["eventi"]], default=0)) + 1)
-        st.session_state.db["eventi"].append({"id": nuovo_id, "data": str(nuova_data), "tipo": "Allenamento", "nota": nuova_nota})
-        salvare_dati()
-        st.rerun()
-
-# ==========================================
-# SCHERMATA 2: PARTITE E DISTINTA UFFICIALE
-# ==========================================
-elif menu == "🟢 Calendario e Convocazioni":
-    st.header("🟢 Calendario e Convocazioni")
-    
-    st.subheader("Le tue Gare:")
-    eventi_partita = [ev for ev in st.session_state.db["eventi"] if ev["tipo"] in ["Partita", "Torneo"]]
-    opzioni_tipo_partita = ["Campionato", "Amichevole", "Coppa Brescia"]
-    
-    if not eventi_partita:
-        st.info("Nessuna partita in programma.")
-    else:
-        for ev in eventi_partita:
-            if st.session_state.edit_evento == ev["id"]:
-                st.write(f"### ✏️ Modifica Partita")
-                curr_date = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").date()
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    mod_data = st.date_input("Data", curr_date, key=f"mod_dp_{ev['id']}")
-                    mod_avv = st.text_input("Avversario", value=ev.get("avversario", ""), key=f"mod_avv_{ev['id']}")
-                    mod_luogo = st.selectbox("Luogo", ["Casa", "Trasferta"], index=0 if ev.get("luogo", "Casa")=="Casa" else 1, key=f"mod_lu_{ev['id']}")
-                    if mod_luogo == "Trasferta":
-                        mod_indirizzo = st.text_input("Indirizzo del campo", value=ev.get("indirizzo", ""), key=f"mod_ind_{ev['id']}")
-                    else:
-                        mod_indirizzo = ""
-                with col2:
-                    # Logica Orario Partita e Convocazione automatica
-                    ora_attuale = ev.get("ora_partita", "15:00")
-                    idx_ora = orari_partita.index(ora_attuale) if ora_attuale in orari_partita else 12 # Default 15:00
-                    mod_orap = st.selectbox("Ora Partita", orari_partita, index=idx_ora, key=f"mod_op_{ev['id']}")
-                    
-                    h_p, m_p = map(int, mod_orap.split(":"))
-                    h_c = h_p - 1
-                    mod_orac = f"{h_c:02d}:{m_p:02d}"
-                    st.write(f"**Ora Ritrovo (automatica):** {mod_orac}")
-                    
-                    valore_attuale_nota = ev.get("nota", "Campionato")
-                    indice_nota = opzioni_tipo_partita.index(valore_attuale_nota) if valore_attuale_nota in opzioni_tipo_partita else 0
-                    mod_nota = st.selectbox("Tipo Partita", opzioni_tipo_partita, index=indice_nota, key=f"mod_np_{ev['id']}")
-                    mod_note_agg = st.text_input("Note aggiuntive", value=ev.get("note_aggiuntive", ""), key=f"mod_na_{ev['id']}")
-                
-                col_s, col_a = st.columns(2)
-                with col_s:
-                    if st.button("💾 Salva Modifiche", key=f"s_modp_{ev['id']}", type="primary"):
-                        ev["data"] = str(mod_data)
-                        ev["avversario"] = mod_avv
-                        ev["luogo"] = mod_luogo
-                        ev["indirizzo"] = mod_indirizzo
-                        ev["ora_partita"] = mod_orap
-                        ev["ora_convocazione"] = mod_orac
-                        ev["nota"] = mod_nota
-                        ev["note_aggiuntive"] = mod_note_agg
-                        st.session_state.edit_evento = None
-                        salvare_dati()
-                        st.rerun()
-                with col_a:
-                    if st.button("❌ Annulla", key=f"a_modp_{ev['id']}"):
-                        st.session_state.edit_evento = None
-                        st.rerun()
-                st.write("---")
-            else:
-                data_f = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").strftime("%d/%m/%Y")
-                sq_casa = "USO UNITED" if ev.get("luogo", "Casa") == "Casa" else ev.get("avversario", "Avversario")
-                sq_trasf = ev.get("avversario", "Avversario") if ev.get("luogo", "Casa") == "Casa" else "USO UNITED"
-                
-                with st.expander(f"🟢 {sq_casa}-{sq_trasf} del {data_f}"):
-                    col_mod, col_del = st.columns([1, 1])
-                    with col_mod:
-                        if st.button("✏️ Modifica Gara", key=f"ed_evp_{ev['id']}"):
-                            st.session_state.edit_evento = ev["id"]
-                            st.rerun()
-                    with col_del:
-                        if st.button("🗑️ Elimina Gara", key=f"del_evp_{ev['id']}"):
-                            st.session_state.db["eventi"] = [e for e in st.session_state.db["eventi"] if e["id"] != ev["id"]]
-                            if ev["id"] in st.session_state.db["storico_presenze"]: del st.session_state.db["storico_presenze"][ev["id"]]
-                            if ev["id"] in st.session_state.db["storico_titolari"]: del st.session_state.db["storico_titolari"][ev["id"]]
-                            if ev["id"] in st.session_state.db["storico_numeri"]: del st.session_state.db["storico_numeri"][ev["id"]]
-                            if ev["id"] in st.session_state.db["storico_gol"]: del st.session_state.db["storico_gol"][ev["id"]]
-                            if ev["id"] in st.session_state.db["storico_risultati"]: del st.session_state.db["storico_risultati"][ev["id"]]
-                            if ev["id"] in st.session_state.db.get("storico_capitano", {}): del st.session_state.db["storico_capitano"][ev["id"]]
-                            if ev["id"] in st.session_state.db.get("storico_vicecapitano", {}): del st.session_state.db["storico_vicecapitano"][ev["id"]]
-                            salvare_dati()
-                            st.rerun()
-                    
-                    st.write("---")
-                    
-                    appello_evento = st.session_state.db["storico_presenze"].get(ev["id"], {})
-                    gol_evento = st.session_state.db["storico_gol"].get(ev["id"], {})
-                    ris_evento = st.session_state.db["storico_risultati"].get(ev["id"], {})
-                    titolari_evento = st.session_state.db["storico_titolari"].get(ev["id"], [])
-                    numeri_evento = st.session_state.db["storico_numeri"].get(ev["id"], {})
-                    capitano_evento = st.session_state.db.get("storico_capitano", {}).get(ev["id"], "")
-                    vice_evento = st.session_state.db.get("storico_vicecapitano", {}).get(ev["id"], "")
-                    
-                    ind_campo = ev.get("indirizzo", "Campo di Casa") if ev.get("luogo", "Casa") == "Trasferta" else "Campo di Casa"
-                    tipo_partita = ev.get("nota", "Campionato")
-                    note_agg = ev.get("note_aggiuntive", "")
-                    
-                    righe_giocatori = ""
-                    convocati_list = []
-                    riga_num = 1
-                    
-                    for ragazzo in ordina_giocatori(st.session_state.db["ragazzi"]):
-                        stato = appello_evento.get(ragazzo, "🟢 Convocato")
-                        is_convocato = "Convocato" in stato and "Non" not in stato
-                        
-                        c_mark = "X" if is_convocato else ""
-                        nc_mark = "X" if not is_convocato else ""
-                        
-                        if is_convocato:
-                            convocati_list.append(ragazzo)
-                            
-                        righe_giocatori += f"<tr><td width='10%' style='border: 1px solid black; padding: 5px;'>{riga_num}</td><td width='50%' style='border: 1px solid black; padding: 5px; text-align: left;'>{cognome_nome(ragazzo)}</td><td width='20%' style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td width='20%' style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
-                        riga_num += 1
-                    
-                    righe_formazione = ""
-                    if titolari_evento:
-                        titolari_validi = ordina_giocatori([t for t in titolari_evento if t in convocati_list])
-                        for t in titolari_validi:
-                            num = numeri_evento.get(t, '-')
-                            nome_t, cognome_t = dividi_nome(t)
-                            
-                            badge = ""
-                            if t == capitano_evento: badge = f" <span style='color: {COLORE_BLU}; font-weight: bold;'>(C)</span>"
-                            elif t == vice_evento: badge = f" <span style='color: {COLORE_VERDE}; font-weight: bold;'>(VC)</span>"
-                            
-                            righe_formazione += f"<tr><td width='10%' style='border: 1px solid black; padding: 5px; font-weight: bold;'>{num}</td><td width='45%' style='border: 1px solid black; padding: 5px; text-align: left;'>{cognome_t}</td><td width='45%' style='border: 1px solid black; padding: 5px; text-align: left;'>{nome_t}{badge}</td></tr>"
-                    else:
-                        righe_formazione = "<tr><td colspan='3' style='border: 1px solid black; padding: 5px; font-style: italic;'>Nessun titolare selezionato</td></tr>"
-                    
-                    logo_immagine = get_logo_html()
-                    
-                    html_distinta = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%;'>
-<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU};'>
-<tr>
-<td style='padding: 0; border: none;'>
-    <table style='width: 100%; border-collapse: collapse; text-align: center;'>
-        <tr>
-            <td width='30%' style='border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
-            <td width='70%' style='border: 1px solid black; padding: 0;'>
-                <table style='width: 100%; border-collapse: collapse; text-align: center;'>
-                    <tr><td style='padding: 5px; font-weight: bold; font-size: 16px; background-color: {COLORE_BLU_CHIARO}; border-bottom: 1px solid black;'>CONVOCAZIONI</td></tr>
-                    <tr><td style='padding: 5px; border-bottom: 1px solid black;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
-                    <tr><td style='padding: 5px; font-weight: bold; border-bottom: 1px solid black;'>TIPO PARTITA: {tipo_partita}</td></tr>
-                    <tr><td style='padding: 5px; border-bottom: 1px solid black;'>DATA: {data_f}</td></tr>
-                    <tr><td style='padding: 5px; border-bottom: 1px solid black;'>ORA PARTITA: {ev.get("ora_partita", "___")} - ORA RITROVO: {ev.get("ora_convocazione", "___")}</td></tr>
-                    <tr><td style='padding: 5px; font-weight: bold; background-color: {COLORE_BLU_CHIARO};'>LUOGO: {ind_campo}</td></tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-    <table style='width: 100%; border-collapse: collapse; text-align: center; border-top: none;'>
-        <tr style='font-weight: bold; background-color: {COLORE_BLU_CHIARO};'>
-            <td width='10%' style='border: 1px solid black; padding: 5px;'>N°</td>
-            <td width='50%' style='border: 1px solid black; padding: 5px;'>Cognome e Nome</td>
-            <td width='20%' style='border: 1px solid black; padding: 5px;' title='Convocato'>C</td>
-            <td width='20%' style='border: 1px solid black; padding: 5px;' title='Non Convocato'>NC</td>
-        </tr>
-        {righe_giocatori}
-    </table>
-</td>
-</tr>
-</table>
-</div>"""
-
-                    html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%;'>
-<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_VERDE};'>
-<tr>
-<td style='padding: 0; border: none;'>
-    <table style='width: 100%; border-collapse: collapse; text-align: center;'>
-        <tr>
-            <td width='30%' style='border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
-            <td width='70%' style='border: 1px solid black; padding: 0;'>
-                <table style='width: 100%; border-collapse: collapse; text-align: center;'>
-                    <tr><td style='padding: 5px; font-weight: bold; font-size: 16px; background-color: {COLORE_VERDE_CHIARO}; border-bottom: 1px solid black;'>FORMAZIONE UFFICIALE</td></tr>
-                    <tr><td style='padding: 5px; border-bottom: 1px solid black;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
-                    <tr><td style='padding: 5px; font-weight: bold; border-bottom: 1px solid black;'>TIPO PARTITA: {tipo_partita}</td></tr>
-                    <tr><td style='padding: 5px;'>DATA: {data_f}</td></tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-    <table style='width: 100%; border-collapse: collapse; text-align: center; border-top: none;'>
-        <tr style='font-weight: bold; background-color: {COLORE_VERDE_CHIARO};'>
-            <td width='10%' style='border: 1px solid black; padding: 5px;'>N°</td>
-            <td width='45%' style='border: 1px solid black; padding: 5px;'>Cognome</td>
-            <td width='45%' style='border: 1px solid black; padding: 5px;'>Nome</td>
-        </tr>
-        {righe_formazione}
-    </table>
-</td>
-</tr>
-</table>
-</div>"""
-                    
-                    whatsapp_text = f"Ciao a tutti,\n\n"
-                    whatsapp_text += f"⚽ *CONVOCAZIONI* ⚽\n"
-                    whatsapp_text += f"⚽ *{sq_casa}-{sq_trasf}*\n"
-                    whatsapp_text += f"🏆 *{tipo_partita}*\n"
-                    whatsapp_text += f"📅 *Data:* {data_f}\n"
-                    whatsapp_text += f"⏰ *Ora Partita:* {ev.get('ora_partita', '___')}\n"
-                    whatsapp_text += f"📍 *Ora Ritrovo:* {ev.get('ora_convocazione', '___')}\n"
-                    whatsapp_text += f"🏟️ *Luogo:* {ind_campo}\n"
-                    if note_agg: whatsapp_text += f"📝 *Note:* {note_agg}\n"
-                        
-                    whatsapp_text += f"\n*ELENCO CONVOCATI:*\n"
-                    if convocati_list:
-                        for c in convocati_list:
-                            whatsapp_text += f"✅ {cognome_nome(c)}\n"
-                    else:
-                        whatsapp_text += "*(Nessun convocato ancora selezionato)*\n"
-                    whatsapp_text += "\n*Forza USO UNITED!* 💙💚"
-
-                    tab1, tab2, tab_formazione, tab3 = st.tabs(["⚙️ Compila Elenco", "📄 Convocazioni Ufficiali", "⚽ Formazione e Dati Partita", "📱 Messaggio WhatsApp"])
-                    
-                    with tab1:
-                        if not st.session_state.db["ragazzi"]:
-                            st.warning("Rosa vuota.")
-                        else:
-                            st.write("#### 🏃 Seleziona Convocati")
-                            resoconto_corrente = {}
-                            opzioni = ["🟢 Convocato", "🔴 Non Convocato"]
-                            
-                            for ragazzo in ordina_giocatori(st.session_state.db["ragazzi"]):
-                                col_nome, col_stato = st.columns([1, 2])
-                                with col_nome: st.write(f"**{cognome_nome(ragazzo)}**")
-                                with col_stato:
-                                    stato_precedente = appello_evento.get(ragazzo, opzioni[0])
-                                    indice_default = opzioni.index(stato_precedente) if stato_precedente in opzioni else 0
-                                    stato = st.radio(f"Stato_{ragazzo}_{ev['id']}", opzioni, index=indice_default, horizontal=True, label_visibility="collapsed", key=f"p_{ragazzo}_{ev['id']}")
-                                    resoconto_corrente[ragazzo] = stato
-                                    
-                            st.write("")
-                            if st.button("💾 Salva Convocazioni", key=f"btn_salva_conv_{ev['id']}", type="primary"):
-                                st.session_state.db["storico_presenze"][ev["id"]] = resoconto_corrente
-                                salvare_dati()
-                                st.success("Convocazioni salvate con successo!")
-                                st.rerun()
-
-                    with tab_formazione:
-                        st.write("#### 🏆 Risultato Gara")
-                        col_t1, col_t2, col_t3 = st.columns(3)
-                        with col_t1:
-                            ris_t1 = st.text_input("1° Tempo (es. 1-0)", value=ris_evento.get("t1", ""), key=f"ris_t1_{ev['id']}")
-                        with col_t2:
-                            ris_t2 = st.text_input("2° Tempo (es. 2-2)", value=ris_evento.get("t2", ""), key=f"ris_t2_{ev['id']}")
-                        with col_t3:
-                            ris_t3 = st.text_input("3° Tempo (es. 0-1)", value=ris_evento.get("t3", ""), key=f"ris_t3_{ev['id']}")
-                        
-                        st.write("---")
-                        st.write("#### ⚽ Inserisci Formazione e Prestazioni")
-                        
-                        if not convocati_list:
-                            st.warning("⚠️ Prima devi selezionare i convocati nella scheda 'Compila Elenco'.")
-                        else:
-                            titolari_salvati = st.session_state.db["storico_titolari"].get(ev["id"], [])
-                            numeri_salvati = st.session_state.db["storico_numeri"].get(ev["id"], {})
-
-                            righe_tabella = []
-                            for c in convocati_list:
-                                nome_str, cogn_str = dividi_nome(c)
-                                try:
-                                    num_prec = int(numeri_salvati.get(c, 0)) if str(numeri_salvati.get(c, "")).strip() != "" else 0
-                                except ValueError:
-                                    num_prec = 0
-                                try:
-                                    gol_prec = int(gol_evento.get(c, 0))
-                                except (ValueError, TypeError):
-                                    gol_prec = 0
-
-                                righe_tabella.append({
-                                    "Giocatore": c,
-                                    "N°": num_prec,
-                                    "Cognome": cogn_str,
-                                    "Nome": nome_str,
-                                    "Tit.": c in titolari_salvati,
-                                    "Gol": gol_prec,
-                                })
-
-                            df_formazione = pd.DataFrame(righe_tabella)
-
-                            st.caption("Tocca una cella per modificarla. N° a 0 = numero di maglia non ancora assegnato.")
-
-                            df_edit = st.data_editor(
-                                df_formazione,
-                                key=f"data_editor_form_{ev['id']}",
-                                hide_index=True,
-                                use_container_width=True,
-                                column_order=["N°", "Cognome", "Nome", "Tit.", "Gol"],
-                                column_config={
-                                    "N°": st.column_config.NumberColumn("N°", min_value=0, max_value=99, step=1, width="small", format="%d"),
-                                    "Cognome": st.column_config.TextColumn("Cognome", disabled=True, width="medium"),
-                                    "Nome": st.column_config.TextColumn("Nome", disabled=True, width="medium"),
-                                    "Tit.": st.column_config.CheckboxColumn("Tit.", width="small"),
-                                    "Gol": st.column_config.NumberColumn("Gol", min_value=0, max_value=99, step=1, width="small", format="%d"),
-                                },
-                            )
-
-                            df_edit = df_edit.copy()
-                            df_edit["Giocatore"] = df_formazione["Giocatore"].values
-
-                            nuovi_titolari = df_edit.loc[df_edit["Tit."] == True, "Giocatore"].tolist()
-                            nuovi_numeri = {row["Giocatore"]: str(int(row["N°"])) for _, row in df_edit.iterrows() if int(row["N°"]) > 0}
-                            resoconto_gol = {row["Giocatore"]: int(row["Gol"]) for _, row in df_edit.iterrows()}
-
-                            numero_titolari = len(nuovi_titolari)
-                            titolari_ok = numero_titolari <= MAX_TITOLARI
-
-                            if numero_titolari > MAX_TITOLARI:
-                                st.error(f"⚠️ Hai selezionato **{numero_titolari}** titolari, ma il massimo è **{MAX_TITOLARI}**. Deseleziona almeno {numero_titolari - MAX_TITOLARI} giocatore/i in tabella prima di salvare.")
-                            elif numero_titolari == MAX_TITOLARI:
-                                st.success(f"✅ Titolari selezionati: {numero_titolari}/{MAX_TITOLARI} — formazione completa.")
-                            else:
-                                st.info(f"ℹ️ Titolari selezionati: {numero_titolari}/{MAX_TITOLARI}")
-
-                            st.write("---")
-                            st.write("#### © Assegna Fasce")
-                            opzioni_fasce = ["Nessuno"] + convocati_list
-                            idx_cap = opzioni_fasce.index(capitano_evento) if capitano_evento in opzioni_fasce else 0
-                            idx_vice = opzioni_fasce.index(vice_evento) if vice_evento in opzioni_fasce else 0
-                            
-                            col_cap, col_vice = st.columns(2)
-                            with col_cap:
-                                input_capitano = st.selectbox("Capitano (C)", opzioni_fasce, index=idx_cap, key=f"cap_{ev['id']}", format_func=lambda x: cognome_nome(x) if x != "Nessuno" else x)
-                            with col_vice:
-                                input_vice = st.selectbox("Vice-Capitano (VC)", opzioni_fasce, index=idx_vice, key=f"vice_{ev['id']}", format_func=lambda x: cognome_nome(x) if x != "Nessuno" else x)
-                            
-                            st.write("")
-                            if st.button("💾 Salva Formazione e Dati", key=f"btn_salva_form_{ev['id']}", type="primary"):
-                                if not titolari_ok:
-                                    st.error(f"❌ Impossibile salvare: hai {numero_titolari} titolari selezionati, il massimo consentito è {MAX_TITOLARI}. Correggi la tabella e riprova.")
-                                else:
-                                    st.session_state.db["storico_titolari"][ev["id"]] = nuovi_titolari
+      </div>
+    </div>
+  );
+}st.session_state.db["storico_titolari"][ev["id"]] = nuovi_titolari
                                     st.session_state.db["storico_numeri"][ev["id"]] = nuovi_numeri
                                     st.session_state.db["storico_risultati"][ev["id"]] = {"t1": ris_t1, "t2": ris_t2, "t3": ris_t3}
                                     st.session_state.db["storico_gol"][ev["id"]] = resoconto_gol
@@ -674,7 +244,8 @@ elif menu == "🟢 Calendario e Convocazioni":
         if nuovo_luogo == "Trasferta":
             nuovo_indirizzo = st.text_input("Indirizzo del campo (es. Via Roma 10)", key="new_indirizzo")
         else:
-            nuovo_indirizzo = ""
+            opzioni_casa = ["Campo Prealpino Santa Giulia Via del brolo 7", "Campo Coltrini Comunale", "Parco Urbano Bovezzo"]
+            nuovo_indirizzo = st.selectbox("Indirizzo del campo", opzioni_casa, key="new_indirizzo")
     with col2:
         nuova_orap = st.selectbox("Ora Partita", orari_partita, index=12, key="new_orap")
         h_p, m_p = map(int, nuova_orap.split(":"))
