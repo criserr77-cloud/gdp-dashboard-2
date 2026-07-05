@@ -454,7 +454,14 @@ elif menu == "🟢 Calendario e Convocazioni":
                     
                     righe_formazione = ""
                     if titolari_evento:
-                        titolari_validi = ordina_giocatori([t for t in titolari_evento if t in convocati_list])
+                        def sorting_key(t):
+                            num_str = numeri_evento.get(t, '-')
+                            try:
+                                n = int(num_str)
+                                return n if n > 0 else 999
+                            except ValueError:
+                                return 999
+                        titolari_validi = sorted([t for t in titolari_evento if t in convocati_list], key=sorting_key)
                         for t in titolari_validi:
                             num = numeri_evento.get(t, '-')
                             nome_t, cognome_t = dividi_nome(t)
@@ -618,6 +625,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 })
 
                             df_formazione = pd.DataFrame(righe_tabella)
+                            df_formazione["sort_num"] = df_formazione["N°"].apply(lambda x: x if x > 0 else 999)
+                            df_formazione = df_formazione.sort_values(by=["sort_num", "Cognome", "Nome"]).drop(columns=["sort_num"]).reset_index(drop=True)
 
                             st.caption("Tocca una cella per modificarla. N° a 0 = numero di maglia non ancora assegnato.")
 
