@@ -280,6 +280,7 @@ if menu == "🔵 Calendario Allenamenti":
                     if ev.get('ora', ''): wa_text += f"⏰ *Ora:* {ev['ora']}\n"
                     if ev.get('indirizzo', ''): wa_text += f"📍 *Luogo:* {ev['indirizzo']}\n"
                     wa_text += f"📝 *Note:* {ev.get('nota', '')}\n"
+                    wa_text += "\nGrazie 💚💙"
                     st.code(wa_text, language="markdown")
                     wa_url = "https://api.whatsapp.com/send?text=" + urllib.parse.quote(wa_text)
                     if hasattr(st, "link_button"):
@@ -547,6 +548,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                             whatsapp_text += f"✅ {cognome_nome(c)}\n"
                     else:
                         whatsapp_text += "*(Nessun convocato ancora selezionato)*\n"
+                    
+                    whatsapp_text += "\nGrazie 💚💙"
 
                     tab1, tab2, tab_formazione, tab3 = st.tabs(["⚙️ Compila Elenco", "📄 Convocazioni Ufficiali", "⚽ Formazione e Dati Partita", "📱 Messaggio WhatsApp"])
                     
