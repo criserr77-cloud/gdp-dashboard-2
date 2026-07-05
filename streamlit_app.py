@@ -552,10 +552,22 @@ elif menu == "🟢 Calendario e Convocazioni":
                     whatsapp_text += f"\n*CONVOCAZIONI:*\n"
                     whatsapp_text += "```\n"
                     
+                    nomi_base_cnt = {}
+                    for r in st.session_state.db.get("ragazzi", []):
+                        nome_p, cognome_p = dividi_nome(r)
+                        nome_iniziale = f"{nome_p[0]}." if nome_p else ""
+                        ridotto = f"{cognome_p} {nome_iniziale}".strip() if cognome_p else nome_iniziale
+                        nomi_base_cnt[ridotto] = nomi_base_cnt.get(ridotto, 0) + 1
+
                     def format_nome_ridotto(ragazzo):
                         nome_p, cognome_p = dividi_nome(ragazzo)
                         nome_iniziale = f"{nome_p[0]}." if nome_p else ""
-                        return f"{cognome_p} {nome_iniziale}".strip() if cognome_p else nome_iniziale
+                        ridotto = f"{cognome_p} {nome_iniziale}".strip() if cognome_p else nome_iniziale
+                        
+                        if nomi_base_cnt.get(ridotto, 1) > 1:
+                            nome_esteso = f"{nome_p[:3]}." if len(nome_p) >= 3 else nome_p
+                            return f"{cognome_p} {nome_esteso}".strip() if cognome_p else nome_esteso
+                        return ridotto
                         
                     max_len = max([len(format_nome_ridotto(r)) for r in st.session_state.db["ragazzi"]]) if st.session_state.db["ragazzi"] else 11
                     max_len = max(9, max_len) # Almeno 9 per "Giocatore"
