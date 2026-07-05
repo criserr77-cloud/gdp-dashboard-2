@@ -32,6 +32,16 @@ OPZIONI_CAMPI_CASA = [
     "Campo Comunale Coltrini Parco Urbano Bovezzo"
 ]
 
+OPZIONI_CAMPI_ALLENAMENTO = [
+    "Campo Prealpino Santa Giulia Via del brolo 7",
+    "Campo Comunale Coltrini Parco Urbano Bovezzo"
+]
+
+orari_allenamento = []
+for h in range(14, 22):
+    orari_allenamento.append(f"{h:02d}:00")
+    orari_allenamento.append(f"{h:02d}:30")
+
 def connetti_foglio():
     try:
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
@@ -212,13 +222,24 @@ if menu == "🔵 Calendario Allenamenti":
                 st.write(f"### ✏️ Modifica Allenamento")
                 curr_date = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").date()
                 mod_data = st.date_input("Data", curr_date, key=f"mod_d_{ev['id']}")
-                mod_nota = st.text_input("Note/Orario", value=ev.get("nota", ""), key=f"mod_n_{ev['id']}")
+                
+                ora_attuale = ev.get("ora", "17:30")
+                idx_ora = orari_allenamento.index(ora_attuale) if ora_attuale in orari_allenamento else 0
+                mod_ora = st.selectbox("Orario", orari_allenamento, index=idx_ora, key=f"mod_o_{ev['id']}")
+                
+                campo_attuale = ev.get("indirizzo", OPZIONI_CAMPI_ALLENAMENTO[0])
+                idx_campo = OPZIONI_CAMPI_ALLENAMENTO.index(campo_attuale) if campo_attuale in OPZIONI_CAMPI_ALLENAMENTO else 0
+                mod_campo = st.selectbox("Campo", OPZIONI_CAMPI_ALLENAMENTO, index=idx_campo, key=f"mod_c_{ev['id']}")
+                
+                mod_nota = st.text_input("Note aggiuntive (opzionale)", value=ev.get("nota", ""), key=f"mod_n_{ev['id']}")
                 
                 col_s, col_a = st.columns(2)
                 with col_s:
                     if st.button("💾 Salva", key=f"s_mod_{ev['id']}", type="primary"):
                         ev["data"] = str(mod_data)
                         ev["nota"] = mod_nota
+                        ev["ora"] = mod_ora
+                        ev["indirizzo"] = mod_campo
                         st.session_state.edit_evento = None
                         salvare_dati()
                         st.rerun()
@@ -229,7 +250,15 @@ if menu == "🔵 Calendario Allenamenti":
                 st.write("---")
             else:
                 data_f = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").strftime("%d/%m/%Y")
-                titolo_box = f"🔵 Allenamento del {data_f} ({ev.get('nota', '')})"
+                dettagli = []
+                if "ora" in ev: dettagli.append(ev["ora"])
+                if "indirizzo" in ev: dettagli.append(ev["indirizzo"])
+                if ev.get("nota", ""): dettagli.append(ev["nota"])
+                titolo_box = f"🔵 Allenamento del {data_f}"
+                if dettagli:
+                    titolo_box += " - " + " | ".join(dettagli)
+                else:
+                    titolo_box += f" ({ev.get('nota', '')})"
                 
                 with st.expander(titolo_box):
                     col_mod, col_del = st.columns([1, 1])
@@ -244,6 +273,20 @@ if menu == "🔵 Calendario Allenamenti":
                             salvare_dati()
                             st.rerun()
                     
+                    st.write("---")
+                    
+                    wa_text = f"Ciao a tutti,\n\n🔵 *PROSSIMO ALLENAMENTO* 🔵\n📅 *Data:* {data_f}\n"
+                    if ev.get('ora', ''): wa_text += f"⏰ *Ora:* {ev['ora']}\n"
+                    if ev.get('indirizzo', ''): wa_text += f"📍 *Luogo:* {ev['indirizzo']}\n"
+                    if ev.get("nota", ""): wa_text += f"📝 *Note:* {ev['nota']}\n"
+                    wa_text += "\nTutte le indicazioni segnate.\n*Forza USO UNITED!* 💙💚"
+                    st.code(wa_text, language="markdown")
+                    wa_url = "https://api.whatsapp.com/send?text=" + urllib.parse.quote(wa_text)
+                    if hasattr(st, "link_button"):
+                        st.link_button("📲 Apri WhatsApp con questo messaggio", wa_url, key=f"wa_all_{ev['id']}")
+                    else:
+                        st.markdown(f"[📲 Apri WhatsApp con questo messaggio]({wa_url})")
+
                     st.write("---")
                     st.write(f"#### 📋 Registro Presenze")
                     
@@ -273,10 +316,19 @@ if menu == "🔵 Calendario Allenamenti":
     st.write("---")
     st.subheader("➕ Fissa un nuovo Allenamento")
     nuova_data = st.date_input("Data", datetime.date.today(), key="new_data_all")
-    nuova_nota = st.text_input("Orario e Luogo (es. '17:30 Campo B')", key="new_nota_all")
+    nuovo_orario = st.selectbox("Orario", orari_allenamento, index=orari_allenamento.index("17:30") if "17:30" in orari_allenamento else 0, key="new_ora_all")
+    nuovo_campo = st.selectbox("Campo", OPZIONI_CAMPI_ALLENAMENTO, key="new_campo_all")
+    nuova_nota = st.text_input("Note aggiuntive (opzionale)", key="new_nota_all")
     if st.button("Aggiungi Allenamento"):
         nuovo_id = str(int(max([int(e["id"]) for e in st.session_state.db["eventi"]], default=0)) + 1)
-        st.session_state.db["eventi"].append({"id": nuovo_id, "data": str(nuova_data), "tipo": "Allenamento", "nota": nuova_nota})
+        st.session_state.db["eventi"].append({
+            "id": nuovo_id, 
+            "data": str(nuova_data), 
+            "tipo": "Allenamento", 
+            "nota": nuova_nota,
+            "ora": nuovo_orario,
+            "indirizzo": nuovo_campo
+        })
         salvare_dati()
         st.rerun()
 
