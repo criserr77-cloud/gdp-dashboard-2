@@ -7,7 +7,6 @@ import base64
 import urllib.parse
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import io
 
 # --- CONFIGURAZIONE GOOGLE SHEETS ---
 ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
@@ -16,6 +15,7 @@ ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc"
 MAX_TITOLARI = 9  # Numero massimo di titolari selezionabili per partita (es. 9 per il calcio a 9)
 
 # --- CONFIGURAZIONE COLORI (tema Blu/Verde) ---
+# Cambia solo questi valori per modificare la palette in tutta l'app e nei documenti scaricabili.
 COLORE_BLU = "#1565C0"          # Blu principale (Convocazioni, accenti, pulsanti)
 COLORE_BLU_CHIARO = "#E3F2FD"   # Blu chiaro (sfondo intestazioni documento Convocazioni)
 COLORE_VERDE = "#2E7D32"        # Verde principale (Formazione, accenti, pulsanti)
@@ -115,16 +115,15 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# ---> MODIFICA FATTA QUI: SOSTITUZIONE DI WEASYPRINT CON XHTML2PDF <---
 def genera_pdf(html_content):
-    """Converte una stringa HTML in un PDF (bytes) usando xhtml2pdf."""
+    """Converte una stringa HTML in un PDF (bytes) usando WeasyPrint. Restituisce None se la generazione fallisce."""
     try:
-        from xhtml2pdf import pisa
+        from weasyprint import HTML
     except ImportError:
-        st.error("Manca la libreria 'xhtml2pdf'. Controlla di averla inserita nel file requirements.txt, poi riavvia l'app.")
+        st.error("Manca la libreria 'weasyprint' o le sue dipendenze di sistema. Controlla requirements.txt e packages.txt, poi riavvia l'app.")
         return None
-        
     try:
+        # Aggiunta la direttiva table-layout: fixed; globale per il PDF per forzare le tabelle al 100%
         documento_completo = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -138,6 +137,12 @@ def genera_pdf(html_content):
         background-color: white;
         margin: 0;
         padding: 0;
+        width: 100%;
+        box-sizing: border-box;
+    }}
+    table {{
+        table-layout: fixed;
+        width: 100%;
     }}
 </style>
 </head>
@@ -145,21 +150,7 @@ def genera_pdf(html_content):
 {html_content}
 </body>
 </html>"""
-        
-        # Buffer per salvare il PDF in memoria
-        result_file = io.BytesIO()
-        
-        # Genera il PDF
-        pisa_status = pisa.CreatePDF(
-            src=documento_completo,
-            dest=result_file
-        )
-        
-        if pisa_status.err:
-            st.error("Errore interno di xhtml2pdf durante la generazione del PDF.")
-            return None
-            
-        return result_file.getvalue()
+        return HTML(string=documento_completo).write_pdf()
     except Exception as e:
         st.error(f"Errore nella generazione del PDF: {e}")
         return None
@@ -170,7 +161,7 @@ def get_logo_html(per_pdf=False):
             with open(f"stemma.{ext}", "rb") as f:
                 encoded = base64.b64encode(f.read()).decode()
                 if per_pdf:
-                    # xhtml2pdf richiede dimensioni esplicite
+                    # xhtml2pdf non supporta bene max-width/object-fit: serve una dimensione fissa esplicita.
                     return f"<img src='data:image/{ext};base64,{encoded}' width='90' height='100' style='width:90px; height:100px;'>"
                 return f"<img src='data:image/{ext};base64,{encoded}' style='max-width: 100px; max-height: 120px; object-fit: contain;'>"
     if per_pdf:
@@ -420,13 +411,13 @@ elif menu == "🟢 Calendario e Convocazioni":
                     
                     logo_immagine = get_logo_html()
                     
-                    # HTML Convocazioni
-                    html_distinta = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%;'>
-<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU};'>
+                    # HTML Convocazioni con table-layout: fixed e box-sizing: border-box
+                    html_distinta = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%; box-sizing: border-box;'>
+<table style='width: 100%; table-layout: fixed; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU};'>
 <tr>
 <td style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
 <td style='width: 70%; border: 1px solid black; padding: 0;'>
-<table style='width: 100%; border-collapse: collapse; text-align: center;'>
+<table style='width: 100%; table-layout: fixed; border-collapse: collapse; text-align: center;'>
 <tr><td style='padding: 5px; font-weight: bold; font-size: 16px; background-color: {COLORE_BLU_CHIARO}; border-bottom: 1px solid black;'>CONVOCAZIONI</td></tr>
 <tr><td style='padding: 5px; border-bottom: 1px solid black;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
 <tr><td style='padding: 5px; font-weight: bold; border-bottom: 1px solid black;'>TIPO PARTITA: {tipo_partita}</td></tr>
@@ -437,7 +428,7 @@ elif menu == "🟢 Calendario e Convocazioni":
 </td>
 </tr>
 </table>
-<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU}; border-top: none;'>
+<table style='width: 100%; table-layout: fixed; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU}; border-top: none;'>
 <tr style='font-weight: bold; background-color: {COLORE_BLU_CHIARO};'>
 <td style='border: 1px solid black; padding: 5px; width: 10%;'>N°</td>
 <td style='border: 1px solid black; padding: 5px; width: 50%;'>Cognome e Nome</td>
@@ -448,13 +439,13 @@ elif menu == "🟢 Calendario e Convocazioni":
 </table>
 </div>"""
 
-                    # HTML Formazione
-                    html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%;'>
-<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_VERDE};'>
+                    # HTML Formazione con table-layout: fixed e box-sizing: border-box
+                    html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%; box-sizing: border-box;'>
+<table style='width: 100%; table-layout: fixed; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_VERDE};'>
 <tr>
 <td style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
 <td style='width: 70%; border: 1px solid black; padding: 0;'>
-<table style='width: 100%; border-collapse: collapse; text-align: center;'>
+<table style='width: 100%; table-layout: fixed; border-collapse: collapse; text-align: center;'>
 <tr><td style='padding: 5px; font-weight: bold; font-size: 16px; background-color: {COLORE_VERDE_CHIARO}; border-bottom: 1px solid black;'>FORMAZIONE UFFICIALE</td></tr>
 <tr><td style='padding: 5px; border-bottom: 1px solid black;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
 <tr><td style='padding: 5px; font-weight: bold; border-bottom: 1px solid black;'>TIPO PARTITA: {tipo_partita}</td></tr>
@@ -463,7 +454,7 @@ elif menu == "🟢 Calendario e Convocazioni":
 </td>
 </tr>
 </table>
-<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_VERDE}; border-top: none;'>
+<table style='width: 100%; table-layout: fixed; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_VERDE}; border-top: none;'>
 <tr style='font-weight: bold; background-color: {COLORE_VERDE_CHIARO};'>
 <td style='border: 1px solid black; padding: 5px; width: 10%;'>N°</td>
 <td style='border: 1px solid black; padding: 5px; width: 45%;'>Cognome</td>
@@ -536,7 +527,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             titolari_salvati = st.session_state.db["storico_titolari"].get(ev["id"], [])
                             numeri_salvati = st.session_state.db["storico_numeri"].get(ev["id"], {})
 
-                            # --- Costruzione tabella dati ---
+                            # --- Costruzione tabella dati (sostituisce il vecchio layout a colonne) ---
                             righe_tabella = []
                             for c in convocati_list:
                                 nome_str, cogn_str = dividi_nome(c)
@@ -560,7 +551,7 @@ elif menu == "🟢 Calendario e Convocazioni":
 
                             df_formazione = pd.DataFrame(righe_tabella)
 
-                            st.caption("Tocca una cella per modificarla. N° a 0 = numero di maglia non assegnato.")
+                            st.caption("Tocca una cella per modificarla. La tabella si adatta automaticamente allo schermo, anche su smartphone. N° a 0 = numero di maglia non ancora assegnato (nel documento ufficiale comparirà '-').")
 
                             df_edit = st.data_editor(
                                 df_formazione,
@@ -577,10 +568,13 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 },
                             )
 
+                            # Riallineo l'indice del giocatore alle righe restituite dal data_editor
                             df_edit = df_edit.copy()
                             df_edit["Giocatore"] = df_formazione["Giocatore"].values
 
                             nuovi_titolari = df_edit.loc[df_edit["Tit."] == True, "Giocatore"].tolist()
+                            # N.B.: un N° pari a 0 è considerato "non assegnato" e viene escluso,
+                            # così nel documento ufficiale compare correttamente "-" invece di "0".
                             nuovi_numeri = {row["Giocatore"]: str(int(row["N°"])) for _, row in df_edit.iterrows() if int(row["N°"]) > 0}
                             resoconto_gol = {row["Giocatore"]: int(row["Gol"]) for _, row in df_edit.iterrows()}
 
@@ -638,7 +632,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                         logo_immagine_pdf = get_logo_html(per_pdf=True)
                         html_distinta_pdf = html_distinta.replace(logo_immagine, logo_immagine_pdf)
                         pdf_convocazioni = genera_pdf(html_distinta_pdf)
-                        
                         if pdf_convocazioni:
                             st.download_button(
                                 label="⬇️ Scarica Convocazioni (PDF)",
@@ -656,15 +649,19 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 mime="text/html",
                                 key=f"dl_html_conv_fallback_{ev['id']}"
                             )
+                        st.caption("📎 WhatsApp non permette di allegare automaticamente un file da un sito esterno: scarica il PDF qui sopra, poi allegalo manualmente nella chat. Nella scheda '📱 Messaggio WhatsApp' trovi un pulsante per aprire subito la chat con il testo già pronto.")
 
                     with tab3:
                         st.code(whatsapp_text, language="markdown")
+                        st.caption("💡 Clicca sull'iconcina dei foglietti in alto a destra in questo riquadro nero per copiare tutto il testo in un colpo solo e incollarlo su WhatsApp!")
+
                         st.write("---")
                         wa_url = "https://api.whatsapp.com/send?text=" + urllib.parse.quote(whatsapp_text)
                         if hasattr(st, "link_button"):
                             st.link_button("📲 Apri WhatsApp con questo messaggio", wa_url)
                         else:
                             st.markdown(f"[📲 Apri WhatsApp con questo messaggio]({wa_url})")
+                        st.info("WhatsApp non consente di allegare automaticamente un PDF da un sito web (limite della piattaforma, non dell'app). Dopo aver aperto la chat: scarica il PDF dalla scheda '📄 Convocazioni Ufficiali' e allegalo manualmente con l'icona della graffetta 📎.")
 
     st.write("---")
     st.subheader("➕ Inserisci una Nuova Partita")
@@ -735,7 +732,7 @@ elif menu == "📊 Statistiche Allenamenti":
         st.table(tabella_all)
         
         if tabella_all:
-            html_all = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Allenamenti</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>Giocatore</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🟢 Presenze</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🔴 Assenze</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🟡 Infortuni</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>📈 % Presenza</th></tr>"
+            html_all = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Allenamenti</h2><table border='1' style='table-layout: fixed; border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>Giocatore</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🟢 Presenze</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🔴 Assenze</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🟡 Infortuni</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>📈 % Presenza</th></tr>"
             for row in tabella_all:
                 html_all += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Presenze']}</td><td style='padding:8px;'>{row['🔴 Assenze']}</td><td style='padding:8px;'>{row['🟡 Infortuni']}</td><td style='padding:8px;'>{row['📈 % Presenza']}</td></tr>"
             html_all += "</table></body></html>"
@@ -794,7 +791,7 @@ elif menu == "🏆 Statistiche Giocatori":
         st.table(tabella_gare)
         
         if tabella_gare:
-            html_giocatori = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Giocatori</h2><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>Giocatore</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🟢 Convocato</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🔴 Non Conv.</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>👕 Titolare</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>📈 % Conv.</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🏅 % Titolare</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>⚽ Gol Fatti</th></tr>"
+            html_giocatori = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Giocatori</h2><table border='1' style='table-layout: fixed; border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>Giocatore</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🟢 Convocato</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🔴 Non Conv.</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>👕 Titolare</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>📈 % Conv.</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🏅 % Titolare</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>⚽ Gol Fatti</th></tr>"
             for row in tabella_gare:
                 html_giocatori += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Convocato']}</td><td style='padding:8px;'>{row['🔴 Non Conv.']}</td><td style='padding:8px;'>{row['👕 Titolare']}</td><td style='padding:8px;'>{row['📈 % Conv.']}</td><td style='padding:8px;'>{row['🏅 % Titolare']}</td><td style='padding:8px;'>{row['⚽ Gol Fatti']}</td></tr>"
             html_giocatori += "</table></body></html>"
@@ -889,7 +886,7 @@ elif menu == "📈 Statistiche Squadra":
             
             righe_partite += f"<tr><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{data_f}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{stringa_partita}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t1 if t1 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t2 if t2 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t3 if t3 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px; font-weight: bold;'>{esito_tabella}</td></tr>"
 
-    riepilogo_html = f"""<table style="width: 100%; border-collapse: collapse; text-align: center; margin-bottom: 20px; color: var(--text-color);">
+    riepilogo_html = f"""<table style="width: 100%; table-layout: fixed; border-collapse: collapse; text-align: center; margin-bottom: 20px; color: var(--text-color);">
 <tr style="background-color: rgba(128,128,128,0.2); font-weight: bold;">
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Gare Giocate</td>
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Vittorie</td>
@@ -914,7 +911,7 @@ elif menu == "📈 Statistiche Squadra":
     if not righe_partite:
         st.info("Nessun risultato inserito nelle partite in calendario.")
     else:
-        tabella_html = f"""<table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; color: var(--text-color);">
+        tabella_html = f"""<table style="width: 100%; table-layout: fixed; border-collapse: collapse; text-align: center; font-size: 14px; color: var(--text-color);">
 <tr style="background-color: rgba(128,128,128,0.2); font-weight: bold;">
 <td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">Data</td>
 <td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">Partita</td>
@@ -981,6 +978,9 @@ elif menu == "🏃 Gestione Rosa":
 
         df_rosa = pd.DataFrame(righe_rosa)
 
+        # La chiave include una "versione": dopo ogni salvataggio la incrementiamo per
+        # forzare un widget pulito e non farci reincollare in tabella modifiche vecchie
+        # (es. un'eliminazione già salvata) su righe che nel frattempo si sono spostate.
         df_rosa_edit = st.data_editor(
             df_rosa,
             key=f"data_editor_rosa_{st.session_state.rosa_editor_version}",
@@ -998,6 +998,7 @@ elif menu == "🏃 Gestione Rosa":
         )
 
         if st.button("💾 Salva Modifiche Rosa", key="btn_salva_rosa", type="primary"):
+            # --- Validazione preliminare: Nome obbligatorio, nessun duplicato ---
             nomi_superstiti = []
             errori = []
             for idx, row in df_rosa_edit.iterrows():
@@ -1036,6 +1037,7 @@ elif menu == "🏃 Gestione Rosa":
                     ruolo_nuovo = row["Ruolo"]
 
                     if nome_nuovo != nome_originale:
+                        # Propaga la rinomina a tutto lo storico, come nel comportamento precedente
                         for _, appello in st.session_state.db["storico_presenze"].items():
                             if nome_originale in appello:
                                 appello[nome_nuovo] = appello.pop(nome_originale)
@@ -1063,6 +1065,7 @@ elif menu == "🏃 Gestione Rosa":
                     st.session_state.db.setdefault("anagrafica_nascita", {})[nome_nuovo] = nascita_str
                     nuova_lista_ragazzi.append(nome_nuovo)
 
+                # Persistiamo la rosa già in ordine alfabetico per Cognome
                 st.session_state.db["ragazzi"] = ordina_giocatori(nuova_lista_ragazzi)
                 st.session_state.rosa_editor_version += 1
                 salvare_dati()
