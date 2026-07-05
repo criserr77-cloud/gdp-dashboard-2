@@ -7,6 +7,7 @@ import base64
 import urllib.parse
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import io
 
 # --- CONFIGURAZIONE GOOGLE SHEETS ---
 ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
@@ -15,7 +16,6 @@ ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc"
 MAX_TITOLARI = 9  # Numero massimo di titolari selezionabili per partita (es. 9 per il calcio a 9)
 
 # --- CONFIGURAZIONE COLORI (tema Blu/Verde) ---
-# Cambia solo questi valori per modificare la palette in tutta l'app e nei documenti scaricabili.
 COLORE_BLU = "#1565C0"          # Blu principale (Convocazioni, accenti, pulsanti)
 COLORE_BLU_CHIARO = "#E3F2FD"   # Blu chiaro (sfondo intestazioni documento Convocazioni)
 COLORE_VERDE = "#2E7D32"        # Verde principale (Formazione, accenti, pulsanti)
@@ -115,13 +115,15 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
+# ---> MODIFICA FATTA QUI: SOSTITUZIONE DI WEASYPRINT CON XHTML2PDF <---
 def genera_pdf(html_content):
-    """Converte una stringa HTML in un PDF (bytes) usando WeasyPrint. Restituisce None se la generazione fallisce."""
+    """Converte una stringa HTML in un PDF (bytes) usando xhtml2pdf."""
     try:
-        from weasyprint import HTML
+        from xhtml2pdf import pisa
     except ImportError:
-        st.error("Manca la libreria 'weasyprint' o le sue dipendenze di sistema. Controlla requirements.txt e packages.txt, poi riavvia l'app.")
+        st.error("Manca la libreria 'xhtml2pdf'. Controlla di averla inserita nel file requirements.txt, poi riavvia l'app.")
         return None
+        
     try:
         documento_completo = f"""<!DOCTYPE html>
 <html>
@@ -143,7 +145,21 @@ def genera_pdf(html_content):
 {html_content}
 </body>
 </html>"""
-        return HTML(string=documento_completo).write_pdf()
+        
+        # Buffer per salvare il PDF in memoria
+        result_file = io.BytesIO()
+        
+        # Genera il PDF
+        pisa_status = pisa.CreatePDF(
+            src=documento_completo,
+            dest=result_file
+        )
+        
+        if pisa_status.err:
+            st.error("Errore interno di xhtml2pdf durante la generazione del PDF.")
+            return None
+            
+        return result_file.getvalue()
     except Exception as e:
         st.error(f"Errore nella generazione del PDF: {e}")
         return None
@@ -154,7 +170,7 @@ def get_logo_html(per_pdf=False):
             with open(f"stemma.{ext}", "rb") as f:
                 encoded = base64.b64encode(f.read()).decode()
                 if per_pdf:
-                    # xhtml2pdf non supporta bene max-width/object-fit: serve una dimensione fissa esplicita.
+                    # xhtml2pdf richiede dimensioni esplicite
                     return f"<img src='data:image/{ext};base64,{encoded}' width='90' height='100' style='width:90px; height:100px;'>"
                 return f"<img src='data:image/{ext};base64,{encoded}' style='max-width: 100px; max-height: 120px; object-fit: contain;'>"
     if per_pdf:
@@ -162,9 +178,6 @@ def get_logo_html(per_pdf=False):
     return "<div style='font-size: 50px;'>🛡️</div>"
 
 # --- HELPER NOME/COGNOME ---
-# In tutto il resto dell'app (chiavi dei dizionari storico_*, confronti, ecc.) i giocatori
-# restano identificati dalla stringa "Nome Cognome" (compatibilità con i dati già salvati).
-# Queste funzioni centralizzano SOLO la visualizzazione/ordinamento in formato "Cognome Nome".
 def dividi_nome(giocatore):
     parti = str(giocatore).split(" ", 1)
     nome = parti[0]
@@ -523,7 +536,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             titolari_salvati = st.session_state.db["storico_titolari"].get(ev["id"], [])
                             numeri_salvati = st.session_state.db["storico_numeri"].get(ev["id"], {})
 
-                            # --- Costruzione tabella dati (sostituisce il vecchio layout a colonne) ---
+                            # --- Costruzione tabella dati ---
                             righe_tabella = []
                             for c in convocati_list:
                                 nome_str, cogn_str = dividi_nome(c)
@@ -547,7 +560,7 @@ elif menu == "🟢 Calendario e Convocazioni":
 
                             df_formazione = pd.DataFrame(righe_tabella)
 
-                            st.caption("Tocca una cella per modificarla. La tabella si adatta automaticamente allo schermo, anche su smartphone. N° a 0 = numero di maglia non ancora assegnato (nel documento ufficiale comparirà '-').")
+                            st.caption("Tocca una cella per modificarla. N° a 0 = numero di maglia non assegnato.")
 
                             df_edit = st.data_editor(
                                 df_formazione,
@@ -564,13 +577,10 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 },
                             )
 
-                            # Riallineo l'indice del giocatore alle righe restituite dal data_editor
                             df_edit = df_edit.copy()
                             df_edit["Giocatore"] = df_formazione["Giocatore"].values
 
                             nuovi_titolari = df_edit.loc[df_edit["Tit."] == True, "Giocatore"].tolist()
-                            # N.B.: un N° pari a 0 è considerato "non assegnato" e viene escluso,
-                            # così nel documento ufficiale compare correttamente "-" invece di "0".
                             nuovi_numeri = {row["Giocatore"]: str(int(row["N°"])) for _, row in df_edit.iterrows() if int(row["N°"]) > 0}
                             resoconto_gol = {row["Giocatore"]: int(row["Gol"]) for _, row in df_edit.iterrows()}
 
@@ -628,6 +638,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                         logo_immagine_pdf = get_logo_html(per_pdf=True)
                         html_distinta_pdf = html_distinta.replace(logo_immagine, logo_immagine_pdf)
                         pdf_convocazioni = genera_pdf(html_distinta_pdf)
+                        
                         if pdf_convocazioni:
                             st.download_button(
                                 label="⬇️ Scarica Convocazioni (PDF)",
@@ -645,19 +656,15 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 mime="text/html",
                                 key=f"dl_html_conv_fallback_{ev['id']}"
                             )
-                        st.caption("📎 WhatsApp non permette di allegare automaticamente un file da un sito esterno: scarica il PDF qui sopra, poi allegalo manualmente nella chat. Nella scheda '📱 Messaggio WhatsApp' trovi un pulsante per aprire subito la chat con il testo già pronto.")
 
                     with tab3:
                         st.code(whatsapp_text, language="markdown")
-                        st.caption("💡 Clicca sull'iconcina dei foglietti in alto a destra in questo riquadro nero per copiare tutto il testo in un colpo solo e incollarlo su WhatsApp!")
-
                         st.write("---")
                         wa_url = "https://api.whatsapp.com/send?text=" + urllib.parse.quote(whatsapp_text)
                         if hasattr(st, "link_button"):
                             st.link_button("📲 Apri WhatsApp con questo messaggio", wa_url)
                         else:
                             st.markdown(f"[📲 Apri WhatsApp con questo messaggio]({wa_url})")
-                        st.info("WhatsApp non consente di allegare automaticamente un PDF da un sito web (limite della piattaforma, non dell'app). Dopo aver aperto la chat: scarica il PDF dalla scheda '📄 Convocazioni Ufficiali' e allegalo manualmente con l'icona della graffetta 📎.")
 
     st.write("---")
     st.subheader("➕ Inserisci una Nuova Partita")
@@ -974,9 +981,6 @@ elif menu == "🏃 Gestione Rosa":
 
         df_rosa = pd.DataFrame(righe_rosa)
 
-        # La chiave include una "versione": dopo ogni salvataggio la incrementiamo per
-        # forzare un widget pulito e non farci reincollare in tabella modifiche vecchie
-        # (es. un'eliminazione già salvata) su righe che nel frattempo si sono spostate.
         df_rosa_edit = st.data_editor(
             df_rosa,
             key=f"data_editor_rosa_{st.session_state.rosa_editor_version}",
@@ -994,7 +998,6 @@ elif menu == "🏃 Gestione Rosa":
         )
 
         if st.button("💾 Salva Modifiche Rosa", key="btn_salva_rosa", type="primary"):
-            # --- Validazione preliminare: Nome obbligatorio, nessun duplicato ---
             nomi_superstiti = []
             errori = []
             for idx, row in df_rosa_edit.iterrows():
@@ -1033,7 +1036,6 @@ elif menu == "🏃 Gestione Rosa":
                     ruolo_nuovo = row["Ruolo"]
 
                     if nome_nuovo != nome_originale:
-                        # Propaga la rinomina a tutto lo storico, come nel comportamento precedente
                         for _, appello in st.session_state.db["storico_presenze"].items():
                             if nome_originale in appello:
                                 appello[nome_nuovo] = appello.pop(nome_originale)
@@ -1061,7 +1063,6 @@ elif menu == "🏃 Gestione Rosa":
                     st.session_state.db.setdefault("anagrafica_nascita", {})[nome_nuovo] = nascita_str
                     nuova_lista_ragazzi.append(nome_nuovo)
 
-                # Persistiamo la rosa già in ordine alfabetico per Cognome
                 st.session_state.db["ragazzi"] = ordina_giocatori(nuova_lista_ragazzi)
                 st.session_state.rosa_editor_version += 1
                 salvare_dati()
