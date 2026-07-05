@@ -552,12 +552,12 @@ elif menu == "🟢 Calendario e Convocazioni":
                     whatsapp_text += f"\n*CONVOCAZIONI:*\n"
                     whatsapp_text += "```\n"
                     
-                    max_len = max([len(cognome_nome(r)) for r in st.session_state.db["ragazzi"]]) if st.session_state.db["ragazzi"] else 15
-                    max_len = max(max_len, 12)
+                    max_len = max([len(cognome_nome(r)) for r in st.session_state.db["ragazzi"]]) if st.session_state.db["ragazzi"] else 12
+                    max_len = min(max_len, 15) # limite per evitare a capo su schermi piccoli
                     
-                    header_nome = "Cognome Nome".center(max_len)
-                    whatsapp_text += f" {header_nome} | C | NC \n"
-                    whatsapp_text += "-" * (max_len + 12) + "\n"
+                    header_nome = "Giocatore".ljust(max_len)
+                    whatsapp_text += f" {header_nome} | C | NC\n"
+                    whatsapp_text += " " + "-" * (max_len + 10) + "\n"
                     
                     if not st.session_state.db["ragazzi"]:
                         whatsapp_text += " (Nessun giocatore in rosa)\n"
@@ -567,8 +567,14 @@ elif menu == "🟢 Calendario e Convocazioni":
                             is_convocato = "Convocato" in stato and "Non" not in stato
                             c_mark = "✅" if is_convocato else "➖"
                             nc_mark = "✅" if not is_convocato else "➖"
-                            nome_pad = cognome_nome(ragazzo).center(max_len)
-                            whatsapp_text += f" {nome_pad} | {c_mark} | {nc_mark} \n"
+                            
+                            nome = cognome_nome(ragazzo)
+                            if len(nome) > max_len:
+                                nome_pad = nome[:max_len-1] + "."
+                            else:
+                                nome_pad = nome.ljust(max_len)
+                                
+                            whatsapp_text += f" {nome_pad} | {c_mark} | {nc_mark}\n"
                     
                     whatsapp_text += "```\n"
                     whatsapp_text += "\nGrazie 💚💙"
