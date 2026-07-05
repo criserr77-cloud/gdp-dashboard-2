@@ -29,7 +29,6 @@ for h in range(9, 19):
 
 # Opzioni campi per le partite in casa
 OPZIONI_CAMPI_CASA = [
-    "Campo Prealpino Santa Giulia Via del brolo 7",
     "Campo Comunale Coltrini Parco Urbano Bovezzo"
 ]
 
@@ -379,7 +378,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     capitano_evento = st.session_state.db.get("storico_capitano", {}).get(ev["id"], "")
                     vice_evento = st.session_state.db.get("storico_vicecapitano", {}).get(ev["id"], "")
                     
-                    ind_campo = ev.get("indirizzo", "Campo di Casa") if ev.get("luogo", "Casa") == "Trasferta" else "Campo di Casa"
+                    ind_campo = ev.get("indirizzo", OPZIONI_CAMPI_CASA[0] if ev.get("luogo", "Casa") == "Casa" else "")
                     tipo_partita = ev.get("nota", "Campionato")
                     note_agg = ev.get("note_aggiuntive", "")
                     
