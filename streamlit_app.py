@@ -124,8 +124,29 @@ def genera_pdf(html_content):
         st.error("Manca la libreria 'xhtml2pdf'. Aggiungila al file requirements.txt e riavvia l'app.")
         return None
     try:
+        documento_completo = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    @page {{
+        size: A4;
+        margin: 1.5cm;
+        background-color: white;
+    }}
+    html, body {{
+        background-color: white;
+        margin: 0;
+        padding: 0;
+    }}
+</style>
+</head>
+<body>
+{html_content}
+</body>
+</html>"""
         buffer = io.BytesIO()
-        risultato = pisa.CreatePDF(src=html_content, dest=buffer)
+        risultato = pisa.CreatePDF(src=documento_completo, dest=buffer)
         if risultato.err:
             return None
         return buffer.getvalue()
@@ -388,17 +409,21 @@ elif menu == "🟢 Calendario e Convocazioni":
                     logo_immagine = get_logo_html()
                     
                     # HTML Convocazioni
-                    html_distinta = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
+                    html_distinta = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU};'>
 <tr>
-<td rowspan='6' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
-<td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px; background-color: {COLORE_BLU_CHIARO};'>CONVOCAZIONI</td>
+<td style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
+<td style='width: 70%; border: 1px solid black; padding: 0;'>
+<table style='width: 100%; border-collapse: collapse; text-align: center;'>
+<tr><td style='padding: 5px; font-weight: bold; font-size: 16px; background-color: {COLORE_BLU_CHIARO}; border-bottom: 1px solid black;'>CONVOCAZIONI</td></tr>
+<tr><td style='padding: 5px; border-bottom: 1px solid black;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
+<tr><td style='padding: 5px; font-weight: bold; border-bottom: 1px solid black;'>TIPO PARTITA: {tipo_partita}</td></tr>
+<tr><td style='padding: 5px; border-bottom: 1px solid black;'>DATA: {data_f}</td></tr>
+<tr><td style='padding: 5px; border-bottom: 1px solid black;'>ORA PARTITA: {ev.get("ora_partita", "___")} - ORA RITROVO: {ev.get("ora_convocazione", "___")}</td></tr>
+<tr><td style='padding: 5px; font-weight: bold; background-color: {COLORE_BLU_CHIARO};'>LUOGO: {ind_campo}</td></tr>
+</table>
+</td>
 </tr>
-<tr><td style='border: 1px solid black; padding: 5px;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
-<tr><td style='border: 1px solid black; padding: 5px; font-weight: bold;'>TIPO PARTITA: {tipo_partita}</td></tr>
-<tr><td style='border: 1px solid black; padding: 5px;'>DATA: {data_f}</td></tr>
-<tr><td style='border: 1px solid black; padding: 5px;'>ORA PARTITA: {ev.get("ora_partita", "___")} - ORA RITROVO: {ev.get("ora_convocazione", "___")}</td></tr>
-<tr><td style='border: 1px solid black; font-weight: bold; padding: 5px; background-color: {COLORE_BLU_CHIARO};'>LUOGO: {ind_campo}</td></tr>
 </table>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU}; border-top: none;'>
 <tr style='font-weight: bold; background-color: {COLORE_BLU_CHIARO};'>
@@ -412,15 +437,19 @@ elif menu == "🟢 Calendario e Convocazioni":
 </div>"""
 
                     # HTML Formazione
-                    html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
+                    html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_VERDE};'>
 <tr>
-<td rowspan='4' style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
-<td style='border: 1px solid black; font-weight: bold; font-size: 16px; padding: 5px; background-color: {COLORE_VERDE_CHIARO};'>FORMAZIONE UFFICIALE</td>
+<td style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
+<td style='width: 70%; border: 1px solid black; padding: 0;'>
+<table style='width: 100%; border-collapse: collapse; text-align: center;'>
+<tr><td style='padding: 5px; font-weight: bold; font-size: 16px; background-color: {COLORE_VERDE_CHIARO}; border-bottom: 1px solid black;'>FORMAZIONE UFFICIALE</td></tr>
+<tr><td style='padding: 5px; border-bottom: 1px solid black;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
+<tr><td style='padding: 5px; font-weight: bold; border-bottom: 1px solid black;'>TIPO PARTITA: {tipo_partita}</td></tr>
+<tr><td style='padding: 5px;'>DATA: {data_f}</td></tr>
+</table>
+</td>
 </tr>
-<tr><td style='border: 1px solid black; padding: 5px;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
-<tr><td style='border: 1px solid black; padding: 5px; font-weight: bold;'>TIPO PARTITA: {tipo_partita}</td></tr>
-<tr><td style='border: 1px solid black; padding: 5px;'>DATA: {data_f}</td></tr>
 </table>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_VERDE}; border-top: none;'>
 <tr style='font-weight: bold; background-color: {COLORE_VERDE_CHIARO};'>
