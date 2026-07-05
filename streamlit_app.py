@@ -552,8 +552,13 @@ elif menu == "🟢 Calendario e Convocazioni":
                     whatsapp_text += f"\n*CONVOCAZIONI:*\n"
                     whatsapp_text += "```\n"
                     
-                    max_len = max([len(cognome_nome(r)) for r in st.session_state.db["ragazzi"]]) if st.session_state.db["ragazzi"] else 11
-                    max_len = min(max_len, 11) # limite più stringente per schermi piccoli
+                    def format_nome_ridotto(ragazzo):
+                        nome_p, cognome_p = dividi_nome(ragazzo)
+                        nome_iniziale = f"{nome_p[0]}." if nome_p else ""
+                        return f"{cognome_p} {nome_iniziale}".strip() if cognome_p else nome_iniziale
+                        
+                    max_len = max([len(format_nome_ridotto(r)) for r in st.session_state.db["ragazzi"]]) if st.session_state.db["ragazzi"] else 11
+                    max_len = max(9, max_len) # Almeno 9 per "Giocatore"
                     
                     header_nome = "Giocatore".ljust(max_len)
                     whatsapp_text += f"{header_nome} | C  | NC\n"
@@ -568,7 +573,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             c_mark = "✅" if is_convocato else "➖"
                             nc_mark = "✅" if not is_convocato else "➖"
                             
-                            nome = cognome_nome(ragazzo)
+                            nome = format_nome_ridotto(ragazzo)
                             if len(nome) > max_len:
                                 nome_pad = nome[:max_len-1] + "."
                             else:
