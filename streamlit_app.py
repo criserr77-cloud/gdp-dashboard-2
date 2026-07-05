@@ -15,11 +15,17 @@ ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc"
 MAX_TITOLARI = 9  # Numero massimo di titolari selezionabili per partita (es. 9 per il calcio a 9)
 
 # --- CONFIGURAZIONE COLORI (tema Blu/Verde) ---
-# Cambia solo questi valori per modificare la palette in tutta l'app e nei documenti scaricabili.
-COLORE_BLU = "#1565C0"          # Blu principale (Convocazioni, accenti, pulsanti)
-COLORE_BLU_CHIARO = "#E3F2FD"   # Blu chiaro (sfondo intestazioni documento Convocazioni)
-COLORE_VERDE = "#2E7D32"        # Verde principale (Formazione, accenti, pulsanti)
-COLORE_VERDE_CHIARO = "#E8F5E9" # Verde chiaro (sfondo intestazioni documento Formazione)
+COLORE_BLU = "#1565C0"          
+COLORE_BLU_CHIARO = "#E3F2FD"   
+COLORE_VERDE = "#2E7D32"        
+COLORE_VERDE_CHIARO = "#E8F5E9" 
+
+# Genera gli orari per la selezione (da 09:00 a 18:00)
+orari_partita = []
+for h in range(9, 19):
+    orari_partita.append(f"{h:02d}:00")
+    if h != 18:
+        orari_partita.append(f"{h:02d}:30")
 
 def connetti_foglio():
     try:
@@ -67,7 +73,7 @@ def salvare_dati():
 
 st.set_page_config(page_title="MisterApp", layout="centered")
 
-# --- CSS DEFINITIVO E BLOCCATO PER VISUALIZZAZIONE ORIZZONTALE SU MOBILE ---
+# --- CSS DEFINITIVO ---
 st.markdown(f"""
     <style>
     .card {{ 
@@ -78,7 +84,6 @@ st.markdown(f"""
         border: 1px solid {COLORE_VERDE};
     }}
     
-    /* MENU LATERALE RESPONSIVE ED INGRANDITO - tema Blu/Verde */
     [data-testid="stSidebar"] {{
         border-right: 2px solid {COLORE_VERDE};
     }}
@@ -100,14 +105,12 @@ st.markdown(f"""
         color: var(--text-color) !important;
     }}
 
-    /* Pulsanti primari (Salva, Aggiungi, ecc.) con sfumatura Blu -> Verde */
     button[kind="primary"], .stButton button[kind="primary"] {{
         background: linear-gradient(135deg, {COLORE_BLU} 0%, {COLORE_VERDE} 100%) !important;
         border: none !important;
         color: white !important;
     }}
 
-    /* Intestazioni di pagina con accento verde */
     h1, h2 {{
         border-left: 5px solid {COLORE_VERDE};
         padding-left: 12px;
@@ -116,12 +119,11 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 def genera_pdf(html_content):
-    """Converte una stringa HTML in un PDF (bytes) usando xhtml2pdf. Restituisce None se la generazione fallisce."""
     try:
         from xhtml2pdf import pisa
         from io import BytesIO
     except ImportError:
-        st.error("Manca la libreria 'xhtml2pdf'. Aggiungila al file requirements.txt (rimuovi weasyprint) e riavvia l'app.")
+        st.error("Manca la libreria 'xhtml2pdf'. Aggiungila al file requirements.txt e riavvia l'app.")
         return None
     try:
         documento_completo = f"""<!DOCTYPE html>
@@ -129,15 +131,8 @@ def genera_pdf(html_content):
 <head>
 <meta charset="UTF-8">
 <style>
-    @page {{
-        size: A4;
-        margin: 1.5cm;
-    }}
-    html, body {{
-        background-color: white;
-        margin: 0;
-        padding: 0;
-    }}
+    @page {{ size: A4; margin: 1.5cm; }}
+    html, body {{ background-color: white; margin: 0; padding: 0; }}
 </style>
 </head>
 <body>
@@ -165,7 +160,6 @@ def get_logo_html(per_pdf=False):
         return "<div style='font-size: 40px;'>&#9812;</div>"
     return "<div style='font-size: 50px;'>🛡️</div>"
 
-# --- HELPER NOME/COGNOME ---
 def dividi_nome(giocatore):
     parti = str(giocatore).split(" ", 1)
     nome = parti[0]
@@ -309,8 +303,15 @@ elif menu == "🟢 Calendario e Convocazioni":
                     else:
                         mod_indirizzo = ""
                 with col2:
-                    mod_orap = st.text_input("Ora Partita (es. 15:00)", value=ev.get("ora_partita", ""), key=f"mod_op_{ev['id']}")
-                    mod_orac = st.text_input("Ora Convocazione (es. 14:00)", value=ev.get("ora_convocazione", ""), key=f"mod_oc_{ev['id']}")
+                    # Logica Orario Partita e Convocazione automatica
+                    ora_attuale = ev.get("ora_partita", "15:00")
+                    idx_ora = orari_partita.index(ora_attuale) if ora_attuale in orari_partita else 12 # Default 15:00
+                    mod_orap = st.selectbox("Ora Partita", orari_partita, index=idx_ora, key=f"mod_op_{ev['id']}")
+                    
+                    h_p, m_p = map(int, mod_orap.split(":"))
+                    h_c = h_p - 1
+                    mod_orac = f"{h_c:02d}:{m_p:02d}"
+                    st.write(f"**Ora Ritrovo (automatica):** {mod_orac}")
                     
                     valore_attuale_nota = ev.get("nota", "Campionato")
                     indice_nota = opzioni_tipo_partita.index(valore_attuale_nota) if valore_attuale_nota in opzioni_tipo_partita else 0
@@ -350,7 +351,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     with col_del:
                         if st.button("🗑️ Elimina Gara", key=f"del_evp_{ev['id']}"):
                             st.session_state.db["eventi"] = [e for e in st.session_state.db["eventi"] if e["id"] != ev["id"]]
-                            if ev["id"] in st.session_state.db["presenze"]: del st.session_state.db["presenze"][ev["id"]]
+                            if ev["id"] in st.session_state.db["storico_presenze"]: del st.session_state.db["storico_presenze"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_titolari"]: del st.session_state.db["storico_titolari"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_numeri"]: del st.session_state.db["storico_numeri"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_gol"]: del st.session_state.db["storico_gol"][ev["id"]]
@@ -408,7 +409,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                     
                     logo_immagine = get_logo_html()
                     
-                    # HTML Convocazioni raggruppato in Master Table per evitare rotture nei bordi esterni
                     html_distinta = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU};'>
 <tr>
@@ -442,7 +442,6 @@ elif menu == "🟢 Calendario e Convocazioni":
 </table>
 </div>"""
 
-                    # HTML Formazione raggruppato in Master Table
                     html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_VERDE};'>
 <tr>
@@ -559,7 +558,7 @@ elif menu == "🟢 Calendario e Convocazioni":
 
                             df_formazione = pd.DataFrame(righe_tabella)
 
-                            st.caption("Tocca una cella per modificarla. La tabella si adatta automaticamente allo schermo, anche su smartphone. N° a 0 = numero di maglia non ancora assegnato (nel documento ufficiale comparirà '-').")
+                            st.caption("Tocca una cella per modificarla. N° a 0 = numero di maglia non ancora assegnato.")
 
                             df_edit = st.data_editor(
                                 df_formazione,
@@ -654,12 +653,9 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 mime="text/html",
                                 key=f"dl_html_conv_fallback_{ev['id']}"
                             )
-                        st.caption("📎 WhatsApp non permette di allegare automaticamente un file da un sito esterno: scarica il PDF qui sopra, poi allegalo manualmente nella chat. Nella scheda '📱 Messaggio WhatsApp' trovi un pulsante per aprire subito la chat con il testo già pronto.")
 
                     with tab3:
                         st.code(whatsapp_text, language="markdown")
-                        st.caption("💡 Clicca sull'iconcina dei foglietti in alto a destra in questo riquadro nero per copiare tutto il testo in un colpo solo e incollarlo su WhatsApp!")
-
                         st.write("---")
                         wa_url = "https://api.whatsapp.com/send?text=" + urllib.parse.quote(whatsapp_text)
                         if hasattr(st, "link_button"):
@@ -680,8 +676,12 @@ elif menu == "🟢 Calendario e Convocazioni":
         else:
             nuovo_indirizzo = ""
     with col2:
-        nuova_orap = st.text_input("Ora Partita (es. 15:00)", key="new_orap")
-        nuova_orac = st.text_input("Ora Convocazione (es. 14:00)", key="new_orac")
+        nuova_orap = st.selectbox("Ora Partita", orari_partita, index=12, key="new_orap")
+        h_p, m_p = map(int, nuova_orap.split(":"))
+        h_c = h_p - 1
+        nuova_orac = f"{h_c:02d}:{m_p:02d}"
+        st.write(f"**Ora Ritrovo (automatica):** {nuova_orac}")
+        
         nuova_nota = st.selectbox("Tipo Partita", ["Campionato", "Amichevole", "Coppa Brescia"], key="new_notap")
         nuova_nota_agg = st.text_input("Note aggiuntive", key="new_nota_agg")
         
@@ -820,9 +820,11 @@ elif menu == "📈 Statistiche Squadra":
             if "-" in s:
                 g_casa, g_trasf = map(int, s.split("-")[:2])
                 if luogo == "Casa":
-                    gf, gs = g_casa, g_trasf  
+                    gf = g_casa   
+                    gs = g_trasf  
                 else:
-                    gf, gs = g_trasf, g_casa   
+                    gf = g_trasf  
+                    gs = g_casa   
                 
                 if gf > gs: return 1, 0, gf, gs    
                 elif gf == gs: return 1, 1, gf, gs 
@@ -833,12 +835,16 @@ elif menu == "📈 Statistiche Squadra":
         
     eventi_partita = [ev for ev in st.session_state.db["eventi"] if ev["tipo"] in ["Partita", "Torneo"]]
     
-    stats = {
-        "totali": {"gare": 0, "v": 0, "n": 0, "s": 0, "gf": 0, "gs": 0},
-        "t1": {"gare": 0, "v": 0, "n": 0, "s": 0, "gf": 0, "gs": 0},
-        "t2": {"gare": 0, "v": 0, "n": 0, "s": 0, "gf": 0, "gs": 0},
-        "t3": {"gare": 0, "v": 0, "n": 0, "s": 0, "gf": 0, "gs": 0}
-    }
+    tot_partite = 0
+    tot_gf = 0
+    tot_gs = 0
+    vittorie = 0
+    pareggi = 0
+    sconfitte = 0
+    
+    partite_t1 = 0; v_t1 = 0; p_t1 = 0; s_t1 = 0; gf_t1 = 0; gs_t1 = 0
+    partite_t2 = 0; v_t2 = 0; p_t2 = 0; s_t2 = 0; gf_t2 = 0; gs_t2 = 0
+    partite_t3 = 0; v_t3 = 0; p_t3 = 0; s_t3 = 0; gf_t3 = 0; gs_t3 = 0
     
     righe_partite = ""
     
@@ -849,77 +855,67 @@ elif menu == "📈 Statistiche Squadra":
         t3 = ris_evento.get("t3", "")
         
         if t1 or t2 or t3:
-            stats["totali"]["gare"] += 1
+            tot_partite += 1
             luogo_gara = ev.get("luogo", "Casa")
+            pu1, pa1, gf1, gs1 = parse_tempo(t1, luogo_gara)
+            pu2, pa2, gf2, gs2 = parse_tempo(t2, luogo_gara)
+            pu3, pa3, gf3, gs3 = parse_tempo(t3, luogo_gara)
             
-            tempi = [("t1", t1), ("t2", t2), ("t3", t3)]
-            p_uso_tot = p_avv_tot = gf_partita = gs_partita = 0
+            p_uso_tot = pu1 + pu2 + pu3
+            p_avv_tot = pa1 + pa2 + pa3
             
-            for key, t_str in tempi:
-                if t_str:
-                    pu, pa, gf, gs = parse_tempo(t_str, luogo_gara)
-                    p_uso_tot += pu
-                    p_avv_tot += pa
-                    gf_partita += gf
-                    gs_partita += gs
-                    
-                    stats[key]["gare"] += 1
-                    stats[key]["gf"] += gf
-                    stats[key]["gs"] += gs
-                    if gf > gs: stats[key]["v"] += 1
-                    elif gf == gs: stats[key]["n"] += 1
-                    else: stats[key]["s"] += 1
-
-            stats["totali"]["gf"] += gf_partita
-            stats["totali"]["gs"] += gs_partita
+            gf_partita = gf1 + gf2 + gf3
+            gs_partita = gs1 + gs2 + gs3
+            
+            tot_gf += gf_partita
+            tot_gs += gs_partita
             
             esito_tabella = f"{p_uso_tot} - {p_avv_tot}"
             
             if p_uso_tot > p_avv_tot:
-                stats["totali"]["v"] += 1
+                vittorie += 1
             elif p_uso_tot < p_avv_tot:
-                stats["totali"]["s"] += 1
+                sconfitte += 1
             else:
                 if gf_partita > gs_partita:
-                    stats["totali"]["v"] += 1
+                    vittorie += 1
                     esito_tabella += " <br><span style='font-size:12px; color: #4CAF50;'>(V per Diff. Reti)</span>"
                 elif gf_partita < gs_partita:
-                    stats["totali"]["s"] += 1
+                    sconfitte += 1
                     esito_tabella += " <br><span style='font-size:12px; color: #F44336;'>(S per Diff. Reti)</span>"
                 else:
-                    stats["totali"]["n"] += 1
+                    pareggi += 1
                     
+            if t1:
+                partite_t1 += 1
+                gf_t1 += gf1; gs_t1 += gs1
+                if gf1 > gs1: v_t1 += 1
+                elif gf1 < gs1: s_t1 += 1
+                else: p_t1 += 1
+            if t2:
+                partite_t2 += 1
+                gf_t2 += gf2; gs_t2 += gs2
+                if gf2 > gs2: v_t2 += 1
+                elif gf2 < gs2: s_t2 += 1
+                else: p_t2 += 1
+            if t3:
+                partite_t3 += 1
+                gf_t3 += gf3; gs_t3 += gs3
+                if gf3 > gs3: v_t3 += 1
+                elif gf3 < gs3: s_t3 += 1
+                else: p_t3 += 1
+                
             data_f = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").strftime("%d/%m/%Y")
-            
             sq_casa = "USO UNITED" if luogo_gara == "Casa" else ev.get("avversario", "Avversario")
             sq_trasf = ev.get("avversario", "Avversario") if luogo_gara == "Casa" else "USO UNITED"
             stringa_partita = f"{sq_casa}-{sq_trasf}"
             
             righe_partite += f"<tr><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{data_f}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{stringa_partita}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t1 if t1 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t2 if t2 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t3 if t3 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px; font-weight: bold;'>{esito_tabella}</td></tr>"
 
-    righe_riepilogo = ""
-    config_tempi = [
-        ("GLOBALE", "totali", "background-color: rgba(46,125,50,0.1); font-size: 18px;"),
-        ("Solo 1° Tempo", "t1", ""),
-        ("Solo 2° Tempo", "t2", ""),
-        ("Solo 3° Tempo", "t3", "")
-    ]
-    
-    for etichetta, k, extra_style in config_tempi:
-        st_data = stats[k]
-        righe_riepilogo += f"""<tr style="{extra_style}">
-<td style="padding: 10px; font-weight: bold; border: 1px solid rgba(128,128,128,0.3);">{etichetta}</td>
-<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">{st_data['gare']}</td>
-<td style="padding: 10px; font-weight: bold; color: #4CAF50; border: 1px solid rgba(128,128,128,0.3);">{st_data['v']}</td>
-<td style="padding: 10px; font-weight: bold; color: #FF9800; border: 1px solid rgba(128,128,128,0.3);">{st_data['n']}</td>
-<td style="padding: 10px; font-weight: bold; color: #F44336; border: 1px solid rgba(128,128,128,0.3);">{st_data['s']}</td>
-<td style="padding: 10px; font-weight: bold; color: #4CAF50; border: 1px solid rgba(128,128,128,0.3);">{st_data['gf']}</td>
-<td style="padding: 10px; font-weight: bold; color: #F44336; border: 1px solid rgba(128,128,128,0.3);">{st_data['gs']}</td>
-</tr>"""
-
-    riepilogo_html = f"""<table style="width: 100%; border-collapse: collapse; text-align: center; margin-bottom: 20px; color: var(--text-color);">
+    def genera_riepilogo_html(titolo, giocate, v, p, s, gf, gs):
+        return f"""<h4 style="color: var(--text-color); margin-top: 20px;">{titolo}</h4>
+<table style="width: 100%; border-collapse: collapse; text-align: center; margin-bottom: 20px; color: var(--text-color);">
 <tr style="background-color: rgba(128,128,128,0.2); font-weight: bold;">
-<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Riepilogo</td>
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Gare</td>
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Vittorie</td>
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Pareggi</td>
@@ -927,9 +923,27 @@ elif menu == "📈 Statistiche Squadra":
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Gol Fatti</td>
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Gol Subiti</td>
 </tr>
-{righe_riepilogo}
+<tr>
+<td style="padding: 15px; font-size: 24px; font-weight: bold; border: 1px solid rgba(128,128,128,0.3);">{giocate}</td>
+<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #4CAF50; border: 1px solid rgba(128,128,128,0.3);">{v}</td>
+<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #FF9800; border: 1px solid rgba(128,128,128,0.3);">{p}</td>
+<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #F44336; border: 1px solid rgba(128,128,128,0.3);">{s}</td>
+<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #4CAF50; border: 1px solid rgba(128,128,128,0.3);">{gf}</td>
+<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #F44336; border: 1px solid rgba(128,128,128,0.3);">{gs}</td>
+</tr>
 </table>"""
+
+    riepilogo_html = genera_riepilogo_html("⚽ Statistiche Generali (Intera Partita)", tot_partite, vittorie, pareggi, sconfitte, tot_gf, tot_gs)
+    riepilogo_t1_html = genera_riepilogo_html("⏱️ Statistiche 1° Tempo", partite_t1, v_t1, p_t1, s_t1, gf_t1, gs_t1)
+    riepilogo_t2_html = genera_riepilogo_html("⏱️ Statistiche 2° Tempo", partite_t2, v_t2, p_t2, s_t2, gf_t2, gs_t2)
+    riepilogo_t3_html = genera_riepilogo_html("⏱️ Statistiche 3° Tempo", partite_t3, v_t3, p_t3, s_t3, gf_t3, gs_t3)
+
     st.markdown(riepilogo_html, unsafe_allow_html=True)
+    
+    with st.expander("📊 Vedi Statistiche per Singolo Tempo", expanded=True):
+        st.markdown(riepilogo_t1_html, unsafe_allow_html=True)
+        st.markdown(riepilogo_t2_html, unsafe_allow_html=True)
+        st.markdown(riepilogo_t3_html, unsafe_allow_html=True)
     
     st.write("---")
     st.subheader("📝 Dettaglio Risultati Partite")
@@ -949,8 +963,8 @@ elif menu == "📈 Statistiche Squadra":
 </table>"""
         st.markdown(tabella_html, unsafe_allow_html=True)
         
-        if stats["totali"]["gare"] > 0:
-            html_squadra = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Squadra</h2>{riepilogo_html}<h2>Dettaglio Partite</h2>{tabella_html}</body></html>"
+        if tot_partite > 0:
+            html_squadra = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Squadra</h2>{riepilogo_html}{riepilogo_t1_html}{riepilogo_t2_html}{riepilogo_t3_html}<h2>Dettaglio Partite</h2>{tabella_html}</body></html>"
             html_squadra = html_squadra.replace('var(--text-color)', 'black').replace('rgba(128,128,128,0.2)', '#f0f0f0').replace('rgba(128,128,128,0.3)', 'black')
             
             st.download_button(
