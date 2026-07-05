@@ -820,11 +820,9 @@ elif menu == "📈 Statistiche Squadra":
             if "-" in s:
                 g_casa, g_trasf = map(int, s.split("-")[:2])
                 if luogo == "Casa":
-                    gf = g_casa   
-                    gs = g_trasf  
+                    gf, gs = g_casa, g_trasf  
                 else:
-                    gf = g_trasf  
-                    gs = g_casa   
+                    gf, gs = g_trasf, g_casa   
                 
                 if gf > gs: return 1, 0, gf, gs    
                 elif gf == gs: return 1, 1, gf, gs 
@@ -835,12 +833,12 @@ elif menu == "📈 Statistiche Squadra":
         
     eventi_partita = [ev for ev in st.session_state.db["eventi"] if ev["tipo"] in ["Partita", "Torneo"]]
     
-    tot_partite = 0
-    tot_gf = 0
-    tot_gs = 0
-    vittorie = 0
-    pareggi = 0
-    sconfitte = 0
+    stats = {
+        "totali": {"gare": 0, "v": 0, "n": 0, "s": 0, "gf": 0, "gs": 0},
+        "t1": {"gare": 0, "v": 0, "n": 0, "s": 0, "gf": 0, "gs": 0},
+        "t2": {"gare": 0, "v": 0, "n": 0, "s": 0, "gf": 0, "gs": 0},
+        "t3": {"gare": 0, "v": 0, "n": 0, "s": 0, "gf": 0, "gs": 0}
+    }
     
     righe_partite = ""
     
@@ -851,37 +849,46 @@ elif menu == "📈 Statistiche Squadra":
         t3 = ris_evento.get("t3", "")
         
         if t1 or t2 or t3:
-            tot_partite += 1
+            stats["totali"]["gare"] += 1
             luogo_gara = ev.get("luogo", "Casa")
-            pu1, pa1, gf1, gs1 = parse_tempo(t1, luogo_gara)
-            pu2, pa2, gf2, gs2 = parse_tempo(t2, luogo_gara)
-            pu3, pa3, gf3, gs3 = parse_tempo(t3, luogo_gara)
             
-            p_uso_tot = pu1 + pu2 + pu3
-            p_avv_tot = pa1 + pa2 + pa3
+            tempi = [("t1", t1), ("t2", t2), ("t3", t3)]
+            p_uso_tot = p_avv_tot = gf_partita = gs_partita = 0
             
-            gf_partita = gf1 + gf2 + gf3
-            gs_partita = gs1 + gs2 + gs3
-            
-            tot_gf += gf_partita
-            tot_gs += gs_partita
+            for key, t_str in tempi:
+                if t_str:
+                    pu, pa, gf, gs = parse_tempo(t_str, luogo_gara)
+                    p_uso_tot += pu
+                    p_avv_tot += pa
+                    gf_partita += gf
+                    gs_partita += gs
+                    
+                    stats[key]["gare"] += 1
+                    stats[key]["gf"] += gf
+                    stats[key]["gs"] += gs
+                    if gf > gs: stats[key]["v"] += 1
+                    elif gf == gs: stats[key]["n"] += 1
+                    else: stats[key]["s"] += 1
+
+            stats["totali"]["gf"] += gf_partita
+            stats["totali"]["gs"] += gs_partita
             
             esito_tabella = f"{p_uso_tot} - {p_avv_tot}"
             
             if p_uso_tot > p_avv_tot:
-                vittorie += 1
+                stats["totali"]["v"] += 1
             elif p_uso_tot < p_avv_tot:
-                sconfitte += 1
+                stats["totali"]["s"] += 1
             else:
                 if gf_partita > gs_partita:
-                    vittorie += 1
+                    stats["totali"]["v"] += 1
                     esito_tabella += " <br><span style='font-size:12px; color: #4CAF50;'>(V per Diff. Reti)</span>"
                 elif gf_partita < gs_partita:
-                    sconfitte += 1
+                    stats["totali"]["s"] += 1
                     esito_tabella += " <br><span style='font-size:12px; color: #F44336;'>(S per Diff. Reti)</span>"
                 else:
-                    pareggi += 1
-                
+                    stats["totali"]["n"] += 1
+                    
             data_f = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").strftime("%d/%m/%Y")
             
             sq_casa = "USO UNITED" if luogo_gara == "Casa" else ev.get("avversario", "Avversario")
@@ -890,23 +897,37 @@ elif menu == "📈 Statistiche Squadra":
             
             righe_partite += f"<tr><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{data_f}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{stringa_partita}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t1 if t1 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t2 if t2 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t3 if t3 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px; font-weight: bold;'>{esito_tabella}</td></tr>"
 
+    righe_riepilogo = ""
+    config_tempi = [
+        ("GLOBALE", "totali", "background-color: rgba(46,125,50,0.1); font-size: 18px;"),
+        ("Solo 1° Tempo", "t1", ""),
+        ("Solo 2° Tempo", "t2", ""),
+        ("Solo 3° Tempo", "t3", "")
+    ]
+    
+    for etichetta, k, extra_style in config_tempi:
+        st_data = stats[k]
+        righe_riepilogo += f"""<tr style="{extra_style}">
+<td style="padding: 10px; font-weight: bold; border: 1px solid rgba(128,128,128,0.3);">{etichetta}</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">{st_data['gare']}</td>
+<td style="padding: 10px; font-weight: bold; color: #4CAF50; border: 1px solid rgba(128,128,128,0.3);">{st_data['v']}</td>
+<td style="padding: 10px; font-weight: bold; color: #FF9800; border: 1px solid rgba(128,128,128,0.3);">{st_data['n']}</td>
+<td style="padding: 10px; font-weight: bold; color: #F44336; border: 1px solid rgba(128,128,128,0.3);">{st_data['s']}</td>
+<td style="padding: 10px; font-weight: bold; color: #4CAF50; border: 1px solid rgba(128,128,128,0.3);">{st_data['gf']}</td>
+<td style="padding: 10px; font-weight: bold; color: #F44336; border: 1px solid rgba(128,128,128,0.3);">{st_data['gs']}</td>
+</tr>"""
+
     riepilogo_html = f"""<table style="width: 100%; border-collapse: collapse; text-align: center; margin-bottom: 20px; color: var(--text-color);">
 <tr style="background-color: rgba(128,128,128,0.2); font-weight: bold;">
-<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Gare Giocate</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Riepilogo</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Gare</td>
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Vittorie</td>
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Pareggi</td>
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Sconfitte</td>
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Gol Fatti</td>
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Gol Subiti</td>
 </tr>
-<tr>
-<td style="padding: 15px; font-size: 24px; font-weight: bold; border: 1px solid rgba(128,128,128,0.3);">{tot_partite}</td>
-<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #4CAF50; border: 1px solid rgba(128,128,128,0.3);">{vittorie}</td>
-<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #FF9800; border: 1px solid rgba(128,128,128,0.3);">{pareggi}</td>
-<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #F44336; border: 1px solid rgba(128,128,128,0.3);">{sconfitte}</td>
-<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #4CAF50; border: 1px solid rgba(128,128,128,0.3);">{tot_gf}</td>
-<td style="padding: 15px; font-size: 24px; font-weight: bold; color: #F44336; border: 1px solid rgba(128,128,128,0.3);">{tot_gs}</td>
-</tr>
+{righe_riepilogo}
 </table>"""
     st.markdown(riepilogo_html, unsafe_allow_html=True)
     
@@ -928,7 +949,7 @@ elif menu == "📈 Statistiche Squadra":
 </table>"""
         st.markdown(tabella_html, unsafe_allow_html=True)
         
-        if tot_partite > 0:
+        if stats["totali"]["gare"] > 0:
             html_squadra = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Squadra</h2>{riepilogo_html}<h2>Dettaglio Partite</h2>{tabella_html}</body></html>"
             html_squadra = html_squadra.replace('var(--text-color)', 'black').replace('rgba(128,128,128,0.2)', '#f0f0f0').replace('rgba(128,128,128,0.3)', 'black')
             
