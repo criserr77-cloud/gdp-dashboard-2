@@ -50,57 +50,94 @@ PROJECT_ID = "misterapp-500516"
 API_KEY = "AIzaSyCUKnJF6aIRqgOUiEiLmrd04TF_tJUpnHw"
 URL = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents/misterapp/state?key={API_KEY}"
 
+
+def connetti_foglio():
+    try:
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(st.secrets["gcp_service_account"]), scope)
+        client = gspread.authorize(creds)
+        return client.open_by_key(ID_FOGLIO_GOOGLE).sheet1
+    except Exception as e:
+        st.error(f"Errore connessione Google Sheets: {e}")
+        return None
+
+
 def caricare_dati():
     import logging
+    dati = None
+    
+    # 1. Prova a caricare da Firebase
     try:
-        logging.info("TENTATIVO DI CARICAMENTO")
+        logging.info("TENTATIVO DI CARICAMENTO DA FIREBASE")
         resp = requests.get(URL)
-        logging.info(f"CARICAMENTO STATUS: {resp.status_code}")
         if resp.status_code == 200:
             doc = resp.json()
             if 'fields' in doc and 'data' in doc['fields']:
                 dati_str = doc['fields']['data'].get('stringValue', '{}')
                 dati = json.loads(dati_str)
-                for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", 
-                          "storico_numeri", "storico_gol", "storico_risultati", "anagrafica_ruolo", 
-                          "anagrafica_nascita", "storico_capitano", "storico_vicecapitano"]:
-                    if k not in dati: dati[k] = {}
-                if "ragazzi" not in dati: dati["ragazzi"] = ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."]
-                if "eventi" not in dati: dati["eventi"] = []
-                logging.info(f"CARICATI: {len(dati.get('ragazzi', []))} ragazzi, {len(dati.get('eventi', []))} eventi")
-                return dati
+                logging.info(f"CARICATI DA FIREBASE: {len(dati.get('ragazzi', []))} ragazzi")
     except Exception as e:
-        logging.error(f"ERRORE CARICAMENTO: {e}")
+        logging.error(f"ERRORE CARICAMENTO FIREBASE: {e}")
         st.error(f"Errore caricamento da Firebase: {e}")
-            
-    return {
-        "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
-        "eventi": [],
-        "storico_presenze": {}, "storico_minutaggio": {}, "storico_titolari": {},
-        "storico_moduli": {}, "storico_numeri": {}, "storico_gol": {}, "storico_risultati": {},
-        "anagrafica_ruolo": {}, "anagrafica_nascita": {},
-        "storico_capitano": {}, "storico_vicecapitano": {}
-    }
 
+    # 2. Se Firebase fallisce o è vuoto, prova da Google Sheets
+    if not dati:
+        try:
+            sheet = connetti_foglio()
+            if sheet:
+                contenuto = sheet.acell('A1').value
+                if contenuto:
+                    dati = json.loads(contenuto)
+        except Exception as e:
+            pass
+            
+    if not dati:
+        dati = {
+            "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
+            "eventi": [],
+            "storico_presenze": {}, "storico_minutaggio": {}, "storico_titolari": {},
+            "storico_moduli": {}, "storico_numeri": {}, "storico_gol": {}, "storico_risultati": {},
+            "anagrafica_ruolo": {}, "anagrafica_nascita": {},
+            "storico_capitano": {}, "storico_vicecapitano": {}
+        }
+    
+    # Inizializza le chiavi mancanti
+    for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", 
+              "storico_numeri", "storico_gol", "storico_risultati", "anagrafica_ruolo", 
+              "anagrafica_nascita", "storico_capitano", "storico_vicecapitano"]:
+        if k not in dati: dati[k] = {}
+    if "ragazzi" not in dati: dati["ragazzi"] = []
+    if "eventi" not in dati: dati["eventi"] = []
+    
+    return dati
 
 def salvare_dati():
     import requests
     import json
+    stringa_json = json.dumps(st.session_state.db, ensure_ascii=False, indent=4)
+    
+    # 1. Salva su Firebase
     try:
         doc = {
             "fields": {
                 "data": {
-                    "stringValue": json.dumps(st.session_state.db)
+                    "stringValue": stringa_json
                 }
             }
         }
         resp = requests.patch(URL, json=doc)
         if resp.status_code != 200:
             st.error(f"❌ ERRORE DI SALVATAGGIO FIREBASE: {resp.text}")
-            st.stop()
     except Exception as e:
         st.error(f"❌ ERRORE DI SALVATAGGIO FIREBASE: {e}")
-        st.stop()
+        
+    # 2. Salva su Google Sheets
+    try:
+        sheet = connetti_foglio()
+        if sheet:
+            sheet.update_acell('A1', stringa_json)
+    except Exception as e:
+        st.error(f"❌ ERRORE DI SALVATAGGIO GOOGLE SHEETS: {e}")
 
 st.set_page_config(page_title="MisterApp", layout="centered")
 
