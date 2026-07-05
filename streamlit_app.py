@@ -279,7 +279,7 @@ if menu == "🔵 Calendario Allenamenti":
                     wa_text = f"Ciao a tutti,\n\n🔵 *PROSSIMO ALLENAMENTO* 🔵\n📅 *Data:* {data_f}\n"
                     if ev.get('ora', ''): wa_text += f"⏰ *Ora:* {ev['ora']}\n"
                     if ev.get('indirizzo', ''): wa_text += f"📍 *Luogo:* {ev['indirizzo']}\n"
-                    wa_text += f"📝 *Note:* {ev.get('nota', '')}\n"
+                    if ev.get("nota", "").strip(): wa_text += f"📝 *Note:* {ev['nota'].strip()}\n"
                     wa_text += "\nGrazie 💚💙"
                     st.code(wa_text, language="markdown")
                     wa_url = "https://api.whatsapp.com/send?text=" + urllib.parse.quote(wa_text)
@@ -547,7 +547,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     whatsapp_text += f"⏰ *Ora Partita:* {ev.get('ora_partita', '___')}\n"
                     whatsapp_text += f"📍 *Ora Ritrovo:* {ev.get('ora_convocazione', '___')}\n"
                     whatsapp_text += f"🏟️ *Luogo:* {ind_campo}\n"
-                    whatsapp_text += f"📝 *Note:* {note_agg}\n"
+                    if note_agg and note_agg.strip(): whatsapp_text += f"📝 *Note:* {note_agg.strip()}\n"
                         
                     whatsapp_text += f"\n*ELENCO CONVOCATI:*\n"
                     if convocati_list:
