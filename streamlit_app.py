@@ -115,7 +115,7 @@ def salvare_dati():
     import requests
     import json
     stringa_json = json.dumps(st.session_state.db, ensure_ascii=False, indent=4)
-    
+
     # 1. Salva su Firebase
     try:
         doc = {
@@ -126,11 +126,18 @@ def salvare_dati():
             }
         }
         resp = requests.patch(URL, json=doc)
+        # --- DEBUG TEMPORANEO: salviamo la risposta in session_state così non sparisce col rerun ---
+        st.session_state["debug_firebase_status"] = resp.status_code
+        st.session_state["debug_firebase_response"] = resp.text[:800]
+        st.session_state["debug_firebase_url"] = URL.split("?key=")[0]
         if resp.status_code != 200:
             st.error(f"❌ ERRORE DI SALVATAGGIO FIREBASE: {resp.text}")
     except Exception as e:
+        st.session_state["debug_firebase_status"] = "ECCEZIONE"
+        st.session_state["debug_firebase_response"] = str(e)
+        st.session_state["debug_firebase_url"] = URL.split("?key=")[0]
         st.error(f"❌ ERRORE DI SALVATAGGIO FIREBASE: {e}")
-        
+
     # 2. Salva su Google Sheets
     try:
         sheet = connetti_foglio()
@@ -257,6 +264,14 @@ menu = st.sidebar.radio("Navigazione", [
     "📊 Statistiche Allenamenti", "🏆 Statistiche Giocatori", 
     "📈 Statistiche Squadra", "🏃 Gestione Rosa"
 ])
+
+# --- DEBUG TEMPORANEO: mostra lo stato dell'ultimo salvataggio Firebase nella sidebar ---
+if "debug_firebase_status" in st.session_state:
+    st.sidebar.write("---")
+    st.sidebar.write("🔍 **Debug Firebase (temporaneo)**")
+    st.sidebar.write(f"URL: {st.session_state.get('debug_firebase_url', '')}")
+    st.sidebar.write(f"Status: {st.session_state['debug_firebase_status']}")
+    st.sidebar.code(st.session_state.get("debug_firebase_response", ""))
 
 # ==========================================
 # SCHERMATA 1: ALLENAMENTI
