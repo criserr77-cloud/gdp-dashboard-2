@@ -21,6 +21,13 @@ COLORE_BLU_CHIARO = "#E3F2FD"   # Blu chiaro (sfondo intestazioni documento Conv
 COLORE_VERDE = "#2E7D32"        # Verde principale (Formazione, accenti, pulsanti)
 COLORE_VERDE_CHIARO = "#E8F5E9" # Verde chiaro (sfondo intestazioni documento Formazione)
 
+# --- CONFIGURAZIONE CAMPI DI CASA ---
+# Aggiungi/modifica qui se cambiano i campi disponibili per le partite in casa.
+CAMPI_CASA = [
+    "Campo Santa Giulia - Via del Brolo 7, Villaggio Prealpino",
+    "Campo Comunale - Parco Urbano, Bovezzo",
+]
+
 def connetti_foglio():
     try:
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
@@ -306,7 +313,9 @@ elif menu == "🟢 Calendario e Convocazioni":
                     if mod_luogo == "Trasferta":
                         mod_indirizzo = st.text_input("Indirizzo del campo", value=ev.get("indirizzo", ""), key=f"mod_ind_{ev['id']}")
                     else:
-                        mod_indirizzo = ""
+                        valore_attuale_campo = ev.get("indirizzo", "")
+                        idx_campo_casa = CAMPI_CASA.index(valore_attuale_campo) if valore_attuale_campo in CAMPI_CASA else 0
+                        mod_indirizzo = st.selectbox("Quale campo di casa?", CAMPI_CASA, index=idx_campo_casa, key=f"mod_campo_casa_{ev['id']}")
                 with col2:
                     mod_orap = st.text_input("Ora Partita (es. 15:00)", value=ev.get("ora_partita", ""), key=f"mod_op_{ev['id']}")
                     mod_orac = st.text_input("Ora Convocazione (es. 14:00)", value=ev.get("ora_convocazione", ""), key=f"mod_oc_{ev['id']}")
@@ -369,7 +378,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     capitano_evento = st.session_state.db.get("storico_capitano", {}).get(ev["id"], "")
                     vice_evento = st.session_state.db.get("storico_vicecapitano", {}).get(ev["id"], "")
                     
-                    ind_campo = ev.get("indirizzo", "Campo di Casa") if ev.get("luogo", "Casa") == "Trasferta" else "Campo di Casa"
+                    ind_campo = ev.get("indirizzo") or CAMPI_CASA[0]
                     tipo_partita = ev.get("nota", "Campionato")
                     note_agg = ev.get("note_aggiuntive", "")
                     
@@ -393,8 +402,8 @@ elif menu == "🟢 Calendario e Convocazioni":
 
                         nome_wa, cognome_wa = dividi_nome(ragazzo)
                         nome_iniziale_wa = f"{nome_wa[0].upper()}." if nome_wa else ""
-                        c_wa = "X" if is_convocato else " "
-                        nc_wa = "X" if not is_convocato else " "
+                        c_wa = "✓" if is_convocato else " "
+                        nc_wa = "✓" if not is_convocato else " "
                         righe_whatsapp += f"{cognome_wa[:14]:<14}{nome_iniziale_wa:<5}{c_wa:^4}{nc_wa:^4}\n"
                             
                         righe_giocatori += f"<tr><td style='border: 1px solid black; padding: 5px;'>{riga_num}</td><td style='border: 1px solid black; padding: 5px; text-align: left;'>{cognome_nome(ragazzo)}</td><td style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
@@ -678,7 +687,7 @@ elif menu == "🟢 Calendario e Convocazioni":
         if nuovo_luogo == "Trasferta":
             nuovo_indirizzo = st.text_input("Indirizzo del campo (es. Via Roma 10)", key="new_indirizzo")
         else:
-            nuovo_indirizzo = ""
+            nuovo_indirizzo = st.selectbox("Quale campo di casa?", CAMPI_CASA, key="new_campo_casa")
     with col2:
         nuova_orap = st.text_input("Ora Partita (es. 15:00)", key="new_orap")
         nuova_orac = st.text_input("Ora Convocazione (es. 14:00)", key="new_orac")
