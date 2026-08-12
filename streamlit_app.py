@@ -19,15 +19,13 @@ FIREBASE_DOCUMENTO = "db_squadra"
 
 def connetti_firebase():
     """Inizializza (una sola volta per sessione del server) l'app Firebase Admin e restituisce il client Firestore.
-    Usa un account di servizio (bypassa le regole di sicurezza, niente scadenza a 30gg come la modalità test)."""
-    try:
-        if not firebase_admin._apps:
-            cred = credentials.Certificate(dict(st.secrets["firebase_service_account"]))
-            firebase_admin.initialize_app(cred)
-        return firestore.client()
-    except Exception as e:
-        st.warning(f"⚠️ Firebase non disponibile: {e}")
-        return None
+    Usa un account di servizio (bypassa le regole di sicurezza, niente scadenza a 30gg come la modalità test).
+    Non intercetta gli errori qui: li lascia gestire a chi chiama (salvare_dati/caricare_dati),
+    così l'errore arriva davvero visibile invece di sparire in un avviso lampo prima del rerun."""
+    if not firebase_admin._apps:
+        cred = credentials.Certificate(dict(st.secrets["firebase_service_account"]))
+        firebase_admin.initialize_app(cred)
+    return firestore.client()
 
 # --- CONFIGURAZIONE REGOLAMENTO ---
 MAX_TITOLARI = 9  # Numero massimo di titolari selezionabili per partita (es. 9 per il calcio a 9)
