@@ -7,9 +7,27 @@ import base64
 import urllib.parse
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import firebase_admin
+from firebase_admin import credentials, firestore
 
 # --- CONFIGURAZIONE GOOGLE SHEETS ---
 ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
+
+# --- CONFIGURAZIONE FIREBASE (backup, oltre a Google Sheets) ---
+FIREBASE_COLLECTION = "misterapp"
+FIREBASE_DOCUMENTO = "db_squadra"
+
+def connetti_firebase():
+    """Inizializza (una sola volta per sessione del server) l'app Firebase Admin e restituisce il client Firestore.
+    Usa un account di servizio (bypassa le regole di sicurezza, niente scadenza a 30gg come la modalità test)."""
+    try:
+        if not firebase_admin._apps:
+            cred = credentials.Certificate(dict(st.secrets["firebase_service_account"]))
+            firebase_admin.initialize_app(cred)
+        return firestore.client()
+    except Exception as e:
+        st.warning(f"⚠️ Firebase non disponibile: {e}")
+        return None
 
 # --- CONFIGURAZIONE REGOLAMENTO ---
 MAX_TITOLARI = 9  # Numero massimo di titolari selezionabili per partita (es. 9 per il calcio a 9)
@@ -38,22 +56,39 @@ def connetti_foglio():
         st.error(f"Errore connessione: {e}")
         return None
 
+CHIAVI_DATI_DEFAULT = ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli",
+                       "storico_numeri", "storico_gol", "storico_risultati", "anagrafica_ruolo",
+                       "anagrafica_nascita", "storico_capitano", "storico_vicecapitano"]
+
 def caricare_dati():
+    # 1) Fonte principale: Google Sheets (storicamente affidabile)
     sheet = connetti_foglio()
     if sheet:
         try:
             contenuto = sheet.acell('A1').value
             if contenuto:
                 dati = json.loads(contenuto)
-                # Inizializza nuove chiavi se mancano
-                for k in ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli", 
-                          "storico_numeri", "storico_gol", "storico_risultati", "anagrafica_ruolo", 
-                          "anagrafica_nascita", "storico_capitano", "storico_vicecapitano"]:
+                for k in CHIAVI_DATI_DEFAULT:
                     if k not in dati: dati[k] = {}
                 return dati
         except Exception:
-            pass 
-            
+            pass
+
+    # 2) Backup: se Google Sheets non ha dati validi, prova Firebase
+    try:
+        db_firebase = connetti_firebase()
+        if db_firebase:
+            doc = db_firebase.collection(FIREBASE_COLLECTION).document(FIREBASE_DOCUMENTO).get()
+            if doc.exists:
+                dati = doc.to_dict()
+                if dati:
+                    for k in CHIAVI_DATI_DEFAULT:
+                        if k not in dati: dati[k] = {}
+                    st.info("ℹ️ Dati recuperati da Firebase (Google Sheets non era disponibile).")
+                    return dati
+    except Exception:
+        pass
+
     return {
         "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
         "eventi": [],
@@ -63,14 +98,42 @@ def caricare_dati():
     }
 
 def salvare_dati():
+    salvato_sheets = False
+    salvato_firebase = False
+    errori = []
+
     try:
         sheet = connetti_foglio()
         if sheet:
             stringa_json = json.dumps(st.session_state.db, ensure_ascii=False, indent=4)
             sheet.update_acell('A1', stringa_json)
+            salvato_sheets = True
     except Exception as e:
-        st.error(f"❌ ERRORE DI SALVATAGGIO: {e}")
+        errori.append(f"Google Sheets: {e}")
+
+    try:
+        db_firebase = connetti_firebase()
+        if db_firebase:
+            db_firebase.collection(FIREBASE_COLLECTION).document(FIREBASE_DOCUMENTO).set(st.session_state.db)
+            salvato_firebase = True
+            print(f"[FIREBASE] Salvataggio riuscito su collezione '{FIREBASE_COLLECTION}', documento '{FIREBASE_DOCUMENTO}'.")
+        else:
+            print("[FIREBASE] connetti_firebase() ha restituito None: controlla i Secrets 'firebase_service_account'.")
+    except Exception as e:
+        errori.append(f"Firebase: {e}")
+        print(f"[FIREBASE] ERRORE durante il salvataggio: {repr(e)}")
+
+    if errori:
+        st.session_state["ultimo_errore_salvataggio"] = " | ".join(errori)
+    else:
+        st.session_state.pop("ultimo_errore_salvataggio", None)
+
+    if not salvato_sheets and not salvato_firebase:
+        st.error("❌ ERRORE DI SALVATAGGIO (né Google Sheets né Firebase hanno funzionato): " + " | ".join(errori))
         st.stop()
+    elif errori:
+        st.warning("⚠️ Salvato solo parzialmente, controlla: " + " | ".join(errori))
+
 
 st.set_page_config(page_title="MisterApp", layout="centered")
 
@@ -195,6 +258,9 @@ if "db" not in st.session_state:
 
 if "rosa_editor_version" not in st.session_state: st.session_state.rosa_editor_version = 0
 if "edit_evento" not in st.session_state: st.session_state.edit_evento = None
+
+if st.session_state.get("ultimo_errore_salvataggio"):
+    st.warning(f"⚠️ Ultimo salvataggio parziale — {st.session_state['ultimo_errore_salvataggio']}")
 
 menu = st.sidebar.radio("Navigazione", [
     "🔵 Calendario Allenamenti", "🟢 Calendario e Convocazioni", 
