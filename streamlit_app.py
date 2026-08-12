@@ -374,6 +374,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     note_agg = ev.get("note_aggiuntive", "")
                     
                     righe_giocatori = ""
+                    righe_whatsapp = ""
                     convocati_list = []
                     non_convocati_list = []
                     riga_num = 1
@@ -389,6 +390,12 @@ elif menu == "🟢 Calendario e Convocazioni":
                             convocati_list.append(ragazzo)
                         else:
                             non_convocati_list.append(ragazzo)
+
+                        nome_wa, cognome_wa = dividi_nome(ragazzo)
+                        nome_iniziale_wa = f"{nome_wa[0].upper()}." if nome_wa else ""
+                        c_wa = "X" if is_convocato else " "
+                        nc_wa = "X" if not is_convocato else " "
+                        righe_whatsapp += f"{cognome_wa[:14]:<14}{nome_iniziale_wa:<5}{c_wa:^4}{nc_wa:^4}\n"
                             
                         righe_giocatori += f"<tr><td style='border: 1px solid black; padding: 5px;'>{riga_num}</td><td style='border: 1px solid black; padding: 5px; text-align: left;'>{cognome_nome(ragazzo)}</td><td style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
                         riga_num += 1
@@ -473,19 +480,10 @@ elif menu == "🟢 Calendario e Convocazioni":
                     whatsapp_text += f"🏟️ *Luogo:* {ind_campo}\n"
                     if note_agg: whatsapp_text += f"📝 *Note:* {note_agg}\n"
                         
-                    whatsapp_text += f"\n*ELENCO CONVOCATI:*\n"
-                    if convocati_list:
-                        for c in convocati_list:
-                            whatsapp_text += f"✅ {cognome_nome(c)}\n"
-                    else:
-                        whatsapp_text += "*(Nessun convocato ancora selezionato)*\n"
-
-                    whatsapp_text += f"\n*NON CONVOCATI:*\n"
-                    if non_convocati_list:
-                        for nc in non_convocati_list:
-                            whatsapp_text += f"❌ {cognome_nome(nc)}\n"
-                    else:
-                        whatsapp_text += "*(Nessuno)*\n"
+                    intestazione_wa = f"{'Cognome':<14}{'Nome':<5}{'C ':^4}{'NC':^4}\n"
+                    separatore_wa = "-" * 27 + "\n"
+                    whatsapp_text += f"\n*ELENCO GIOCATORI:*\n"
+                    whatsapp_text += "```\n" + intestazione_wa + separatore_wa + righe_whatsapp + "```\n"
                     whatsapp_text += "\n*Forza USO UNITED!* 💙💚"
 
                     tab1, tab2, tab_formazione, tab3 = st.tabs(["⚙️ Compila Elenco", "📄 Convocazioni Ufficiali", "⚽ Formazione e Dati Partita", "📱 Messaggio WhatsApp"])
