@@ -1,9 +1,11 @@
-libpango-1.0-0
-libpangocairo-1.0-0
-libpangoft2-1.0-0
-libcairo2
-libgdk-pixbuf2.0-0
-libglib2.0-0
-libffi-dev
-shared-mime-info
-fonts-liberation
+rm -f packages.txt
+echo "libpango-1.0-0" > packages.txt
+echo "libpangocairo-1.0-0" >> packages.txt
+echo "libpangoft2-1.0-0" >> packages.txt
+echo "libcairo2" >> packages.txt
+echo "libgdk-pixbuf-2.0-0" >> packages.txt
+echo "libglib2.0-0" >> packages.txt
+echo "libffi-dev" >> packages.txt
+echo "shared-mime-info" >> packages.txt
+echo "fonts-liberation" >> packages.txt
+cat packages.txt
