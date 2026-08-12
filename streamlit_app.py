@@ -375,6 +375,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     
                     righe_giocatori = ""
                     convocati_list = []
+                    non_convocati_list = []
                     riga_num = 1
                     
                     for ragazzo in ordina_giocatori(st.session_state.db["ragazzi"]):
@@ -386,6 +387,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                         
                         if is_convocato:
                             convocati_list.append(ragazzo)
+                        else:
+                            non_convocati_list.append(ragazzo)
                             
                         righe_giocatori += f"<tr><td style='border: 1px solid black; padding: 5px;'>{riga_num}</td><td style='border: 1px solid black; padding: 5px; text-align: left;'>{cognome_nome(ragazzo)}</td><td style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
                         riga_num += 1
@@ -476,6 +479,13 @@ elif menu == "🟢 Calendario e Convocazioni":
                             whatsapp_text += f"✅ {cognome_nome(c)}\n"
                     else:
                         whatsapp_text += "*(Nessun convocato ancora selezionato)*\n"
+
+                    whatsapp_text += f"\n*NON CONVOCATI:*\n"
+                    if non_convocati_list:
+                        for nc in non_convocati_list:
+                            whatsapp_text += f"❌ {cognome_nome(nc)}\n"
+                    else:
+                        whatsapp_text += "*(Nessuno)*\n"
                     whatsapp_text += "\n*Forza USO UNITED!* 💙💚"
 
                     tab1, tab2, tab_formazione, tab3 = st.tabs(["⚙️ Compila Elenco", "📄 Convocazioni Ufficiali", "⚽ Formazione e Dati Partita", "📱 Messaggio WhatsApp"])
