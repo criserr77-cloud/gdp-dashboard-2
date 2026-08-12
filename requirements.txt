@@ -1,5 +1,7 @@
+cat > requirements.txt << 'EOF'
 streamlit
 pandas
 gspread
 oauth2client
 weasyprint
+EOF
