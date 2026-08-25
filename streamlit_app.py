@@ -14,6 +14,7 @@ from firebase_admin import credentials, firestore
 ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
 
 # --- CONFIGURAZIONE FIREBASE (backup, oltre a Google Sheets) ---
+FIREBASE_ATTIVO = False  # In pausa: rimetti a True quando vuoi riattivare il backup su Firebase
 FIREBASE_COLLECTION = "misterapp"
 FIREBASE_DOCUMENTO = "db_squadra"
 
@@ -82,20 +83,21 @@ def caricare_dati():
         except Exception:
             pass
 
-    # 2) Backup: se Google Sheets non ha dati validi, prova Firebase
-    try:
-        db_firebase = connetti_firebase()
-        if db_firebase:
-            doc = db_firebase.collection(FIREBASE_COLLECTION).document(FIREBASE_DOCUMENTO).get()
-            if doc.exists:
-                dati = doc.to_dict()
-                if dati:
-                    for k in CHIAVI_DATI_DEFAULT:
-                        if k not in dati: dati[k] = {}
-                    st.info("ℹ️ Dati recuperati da Firebase (Google Sheets non era disponibile).")
-                    return dati
-    except Exception:
-        pass
+    # 2) Backup: se Google Sheets non ha dati validi, prova Firebase (se attivo)
+    if FIREBASE_ATTIVO:
+        try:
+            db_firebase = connetti_firebase()
+            if db_firebase:
+                doc = db_firebase.collection(FIREBASE_COLLECTION).document(FIREBASE_DOCUMENTO).get()
+                if doc.exists:
+                    dati = doc.to_dict()
+                    if dati:
+                        for k in CHIAVI_DATI_DEFAULT:
+                            if k not in dati: dati[k] = {}
+                        st.info("ℹ️ Dati recuperati da Firebase (Google Sheets non era disponibile).")
+                        return dati
+        except Exception:
+            pass
 
     return {
         "ragazzi": ["Luca R.", "Matteo V.", "Alessandro M.", "Filippo T.", "Gabriele L.", "Tommaso N."],
@@ -148,17 +150,18 @@ def salvare_dati():
     except Exception as e:
         errori.append(f"Google Sheets: {e}")
 
-    try:
-        db_firebase = connetti_firebase()
-        if db_firebase:
-            db_firebase.collection(FIREBASE_COLLECTION).document(FIREBASE_DOCUMENTO).set(st.session_state.db)
-            salvato_firebase = True
-            print(f"[FIREBASE] Salvataggio riuscito su collezione '{FIREBASE_COLLECTION}', documento '{FIREBASE_DOCUMENTO}'.")
-        else:
-            print("[FIREBASE] connetti_firebase() ha restituito None: controlla i Secrets 'firebase_service_account'.")
-    except Exception as e:
-        errori.append(f"Firebase: {e}")
-        print(f"[FIREBASE] ERRORE durante il salvataggio: {repr(e)}")
+    if FIREBASE_ATTIVO:
+        try:
+            db_firebase = connetti_firebase()
+            if db_firebase:
+                db_firebase.collection(FIREBASE_COLLECTION).document(FIREBASE_DOCUMENTO).set(st.session_state.db)
+                salvato_firebase = True
+                print(f"[FIREBASE] Salvataggio riuscito su collezione '{FIREBASE_COLLECTION}', documento '{FIREBASE_DOCUMENTO}'.")
+            else:
+                print("[FIREBASE] connetti_firebase() ha restituito None: controlla i Secrets 'firebase_service_account'.")
+        except Exception as e:
+            errori.append(f"Firebase: {e}")
+            print(f"[FIREBASE] ERRORE durante il salvataggio: {repr(e)}")
 
     if errori:
         st.session_state["ultimo_errore_salvataggio"] = " | ".join(errori)
