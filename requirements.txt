@@ -3,4 +3,4 @@ pandas
 gspread
 oauth2client
 weasyprint
-firebase-admin==6.5.0
+firebase-admin

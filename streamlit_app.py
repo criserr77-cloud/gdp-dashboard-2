@@ -20,10 +20,8 @@ FIREBASE_DOCUMENTO = "db_squadra"
 def connetti_firebase():
     """Inizializza (una sola volta per sessione del server) l'app Firebase Admin e restituisce il client Firestore.
     Usa un account di servizio (bypassa le regole di sicurezza, niente scadenza a 30gg come la modalità test).
-    Configurazione ripristinata a quella originale (nessun database_id esplicito, nessuna libreria
-    alternativa): è quella con cui avevamo verificato dati reali salvati correttamente su Firestore.
     Non intercetta gli errori qui: li lascia gestire a chi chiama (salvare_dati/caricare_dati),
-    così un eventuale errore resta visibile invece di sparire in un avviso lampo prima del rerun."""
+    così l'errore arriva davvero visibile invece di sparire in un avviso lampo prima del rerun."""
     if not firebase_admin._apps:
         cred = credentials.Certificate(dict(st.secrets["firebase_service_account"]))
         firebase_admin.initialize_app(cred)
@@ -44,13 +42,6 @@ COLORE_VERDE_CHIARO = "#E8F5E9" # Verde chiaro (sfondo intestazioni documento Fo
 CAMPI_CASA = [
     "Campo Santa Giulia - Via del Brolo 7, Villaggio Prealpino",
     "Campo Comunale - Parco Urbano, Bovezzo",
-]
-
-# --- CONFIGURAZIONE CAMPI ALLENAMENTO ---
-CAMPI_ALLENAMENTO = [
-    "Campo Comunale Bovezzo",
-    "Campo Prealpino",
-    "Campo S.Andrea",
 ]
 
 def connetti_foglio():
@@ -291,19 +282,14 @@ if menu == "🔵 Calendario Allenamenti":
             if st.session_state.edit_evento == ev["id"]:
                 st.write(f"### ✏️ Modifica Allenamento")
                 curr_date = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").date()
-                mod_data = st.date_input("Data", curr_date, format="DD/MM/YYYY", key=f"mod_d_{ev['id']}")
-                mod_orario = st.text_input("Orario (es. 17:30)", value=ev.get("orario", ev.get("nota", "")), key=f"mod_or_{ev['id']}")
-                luogo_precedente = ev.get("luogo", "")
-                idx_luogo_mod = CAMPI_ALLENAMENTO.index(luogo_precedente) if luogo_precedente in CAMPI_ALLENAMENTO else 0
-                mod_luogo_all = st.selectbox("Luogo", CAMPI_ALLENAMENTO, index=idx_luogo_mod, key=f"mod_lu_all_{ev['id']}")
+                mod_data = st.date_input("Data", curr_date, key=f"mod_d_{ev['id']}")
+                mod_nota = st.text_input("Note/Orario", value=ev.get("nota", ""), key=f"mod_n_{ev['id']}")
                 
                 col_s, col_a = st.columns(2)
                 with col_s:
                     if st.button("💾 Salva", key=f"s_mod_{ev['id']}", type="primary"):
                         ev["data"] = str(mod_data)
-                        ev["orario"] = mod_orario
-                        ev["luogo"] = mod_luogo_all
-                        ev.pop("nota", None)
+                        ev["nota"] = mod_nota
                         st.session_state.edit_evento = None
                         salvare_dati()
                         st.rerun()
@@ -314,11 +300,7 @@ if menu == "🔵 Calendario Allenamenti":
                 st.write("---")
             else:
                 data_f = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").strftime("%d/%m/%Y")
-                if "orario" in ev or "luogo" in ev:
-                    dettaglio_all = " - ".join(filter(None, [ev.get("orario", ""), ev.get("luogo", "")]))
-                else:
-                    dettaglio_all = ev.get("nota", "")
-                titolo_box = f"🔵 Allenamento del {data_f} ({dettaglio_all})"
+                titolo_box = f"🔵 Allenamento del {data_f} ({ev.get('nota', '')})"
                 
                 with st.expander(titolo_box):
                     col_mod, col_del = st.columns([1, 1])
@@ -361,12 +343,11 @@ if menu == "🔵 Calendario Allenamenti":
 
     st.write("---")
     st.subheader("➕ Fissa un nuovo Allenamento")
-    nuova_data = st.date_input("Data", datetime.date.today(), format="DD/MM/YYYY", key="new_data_all")
-    nuovo_orario = st.text_input("Orario (es. 17:30)", key="new_orario_all")
-    nuovo_luogo_all = st.selectbox("Luogo", CAMPI_ALLENAMENTO, key="new_luogo_all")
+    nuova_data = st.date_input("Data", datetime.date.today(), key="new_data_all")
+    nuova_nota = st.text_input("Orario e Luogo (es. '17:30 Campo B')", key="new_nota_all")
     if st.button("Aggiungi Allenamento"):
         nuovo_id = str(int(max([int(e["id"]) for e in st.session_state.db["eventi"]], default=0)) + 1)
-        st.session_state.db["eventi"].append({"id": nuovo_id, "data": str(nuova_data), "tipo": "Allenamento", "orario": nuovo_orario, "luogo": nuovo_luogo_all})
+        st.session_state.db["eventi"].append({"id": nuovo_id, "data": str(nuova_data), "tipo": "Allenamento", "nota": nuova_nota})
         salvare_dati()
         st.rerun()
 
