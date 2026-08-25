@@ -44,6 +44,14 @@ CAMPI_CASA = [
     "Campo Comunale - Parco Urbano, Bovezzo",
 ]
 
+# --- CONFIGURAZIONE CAMPI ALLENAMENTO ---
+CAMPI_ALLENAMENTO = [
+    "Campo Comunale Bovezzo",
+    "Campo Prealpino",
+    "Campo S.Andrea",
+    "Ritiro Bagolino",
+]
+
 def connetti_foglio():
     try:
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
@@ -284,14 +292,19 @@ if menu == "🔵 Calendario Allenamenti":
             if st.session_state.edit_evento == ev["id"]:
                 st.write(f"### ✏️ Modifica Allenamento")
                 curr_date = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").date()
-                mod_data = st.date_input("Data", curr_date, key=f"mod_d_{ev['id']}")
-                mod_nota = st.text_input("Note/Orario", value=ev.get("nota", ""), key=f"mod_n_{ev['id']}")
+                mod_data = st.date_input("Data", curr_date, format="DD/MM/YYYY", key=f"mod_d_{ev['id']}")
+                mod_orario = st.text_input("Orario (es. 17:30)", value=ev.get("orario", ev.get("nota", "")), key=f"mod_or_{ev['id']}")
+                luogo_precedente = ev.get("luogo", "")
+                idx_luogo_mod = CAMPI_ALLENAMENTO.index(luogo_precedente) if luogo_precedente in CAMPI_ALLENAMENTO else 0
+                mod_luogo_all = st.selectbox("Luogo", CAMPI_ALLENAMENTO, index=idx_luogo_mod, key=f"mod_lu_all_{ev['id']}")
                 
                 col_s, col_a = st.columns(2)
                 with col_s:
                     if st.button("💾 Salva", key=f"s_mod_{ev['id']}", type="primary"):
                         ev["data"] = str(mod_data)
-                        ev["nota"] = mod_nota
+                        ev["orario"] = mod_orario
+                        ev["luogo"] = mod_luogo_all
+                        ev.pop("nota", None)
                         st.session_state.edit_evento = None
                         salvare_dati()
                         st.rerun()
@@ -302,7 +315,11 @@ if menu == "🔵 Calendario Allenamenti":
                 st.write("---")
             else:
                 data_f = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").strftime("%d/%m/%Y")
-                titolo_box = f"🔵 Allenamento del {data_f} ({ev.get('nota', '')})"
+                if "orario" in ev or "luogo" in ev:
+                    dettaglio_all = " - ".join(filter(None, [ev.get("orario", ""), ev.get("luogo", "")]))
+                else:
+                    dettaglio_all = ev.get("nota", "")
+                titolo_box = f"🔵 Allenamento del {data_f} ({dettaglio_all})"
                 
                 with st.expander(titolo_box):
                     col_mod, col_del = st.columns([1, 1])
@@ -345,11 +362,12 @@ if menu == "🔵 Calendario Allenamenti":
 
     st.write("---")
     st.subheader("➕ Fissa un nuovo Allenamento")
-    nuova_data = st.date_input("Data", datetime.date.today(), key="new_data_all")
-    nuova_nota = st.text_input("Orario e Luogo (es. '17:30 Campo B')", key="new_nota_all")
+    nuova_data = st.date_input("Data", datetime.date.today(), format="DD/MM/YYYY", key="new_data_all")
+    nuovo_orario = st.text_input("Orario (es. 17:30)", key="new_orario_all")
+    nuovo_luogo_all = st.selectbox("Luogo", CAMPI_ALLENAMENTO, key="new_luogo_all")
     if st.button("Aggiungi Allenamento"):
         nuovo_id = str(int(max([int(e["id"]) for e in st.session_state.db["eventi"]], default=0)) + 1)
-        st.session_state.db["eventi"].append({"id": nuovo_id, "data": str(nuova_data), "tipo": "Allenamento", "nota": nuova_nota})
+        st.session_state.db["eventi"].append({"id": nuovo_id, "data": str(nuova_data), "tipo": "Allenamento", "orario": nuovo_orario, "luogo": nuovo_luogo_all})
         salvare_dati()
         st.rerun()
 
@@ -1107,6 +1125,23 @@ elif menu == "🏃 Gestione Rosa":
                             del st.session_state.db["anagrafica_ruolo"][nome_originale]
                         if nome_originale in st.session_state.db.get("anagrafica_nascita", {}):
                             del st.session_state.db["anagrafica_nascita"][nome_originale]
+                        # Ripulisce anche tutte le tracce nello storico, così un giocatore
+                        # cancellato sparisce davvero e non resta "fantasma" nei dati salvati.
+                        for _, appello in st.session_state.db["storico_presenze"].items():
+                            appello.pop(nome_originale, None)
+                        for _, titolari_list in st.session_state.db["storico_titolari"].items():
+                            if nome_originale in titolari_list:
+                                titolari_list.remove(nome_originale)
+                        for _, numeri_dict in st.session_state.db["storico_numeri"].items():
+                            if numeri_dict:
+                                numeri_dict.pop(nome_originale, None)
+                        for _, gol_dict in st.session_state.db["storico_gol"].items():
+                            if gol_dict:
+                                gol_dict.pop(nome_originale, None)
+                        for campo_fascia in ("storico_capitano", "storico_vicecapitano"):
+                            for ev_id_f, nome_assegnato in st.session_state.db.get(campo_fascia, {}).items():
+                                if nome_assegnato == nome_originale:
+                                    st.session_state.db[campo_fascia][ev_id_f] = ""
                         continue
 
                     nome_pulito = str(row["Nome"]).strip()
@@ -1150,6 +1185,57 @@ elif menu == "🏃 Gestione Rosa":
                 salvare_dati()
                 st.success("✅ Rosa aggiornata con successo!")
                 st.rerun()
+
+        with st.expander("🧹 Pulizia dati orfani (avanzato)"):
+            st.caption("Rimuove dallo storico (presenze, formazioni, gol, fasce, anagrafica) qualsiasi nome che non è più nella rosa attuale. Utile per ripulire tracce di giocatori cancellati in passato, prima che la pulizia automatica esistesse.")
+            if st.button("🧹 Esegui pulizia dati orfani", key="btn_pulizia_orfani"):
+                nomi_attuali = set(st.session_state.db["ragazzi"])
+                rimossi = set()
+
+                for appello in st.session_state.db.get("storico_presenze", {}).values():
+                    for nome in list(appello.keys()):
+                        if nome not in nomi_attuali:
+                            rimossi.add(nome)
+                            appello.pop(nome, None)
+
+                for titolari_list in st.session_state.db.get("storico_titolari", {}).values():
+                    for nome in list(titolari_list):
+                        if nome not in nomi_attuali:
+                            rimossi.add(nome)
+                            titolari_list.remove(nome)
+
+                for numeri_dict in st.session_state.db.get("storico_numeri", {}).values():
+                    if numeri_dict:
+                        for nome in list(numeri_dict.keys()):
+                            if nome not in nomi_attuali:
+                                rimossi.add(nome)
+                                numeri_dict.pop(nome, None)
+
+                for gol_dict in st.session_state.db.get("storico_gol", {}).values():
+                    if gol_dict:
+                        for nome in list(gol_dict.keys()):
+                            if nome not in nomi_attuali:
+                                rimossi.add(nome)
+                                gol_dict.pop(nome, None)
+
+                for campo_fascia in ("storico_capitano", "storico_vicecapitano"):
+                    for ev_id_f, nome_assegnato in st.session_state.db.get(campo_fascia, {}).items():
+                        if nome_assegnato and nome_assegnato not in nomi_attuali:
+                            rimossi.add(nome_assegnato)
+                            st.session_state.db[campo_fascia][ev_id_f] = ""
+
+                for chiave_anagrafica in ("anagrafica_ruolo", "anagrafica_nascita"):
+                    for nome in list(st.session_state.db.get(chiave_anagrafica, {}).keys()):
+                        if nome not in nomi_attuali:
+                            rimossi.add(nome)
+                            st.session_state.db[chiave_anagrafica].pop(nome, None)
+
+                if rimossi:
+                    salvare_dati()
+                    st.success(f"✅ Rimossi {len(rimossi)} nome/i orfano/i: {', '.join(sorted(cognome_nome(n) for n in rimossi))}")
+                    st.rerun()
+                else:
+                    st.info("ℹ️ Nessun dato orfano trovato, è già tutto pulito.")
 
     st.subheader("➕ Aggiungi un nuovo giocatore")
     with st.container():
