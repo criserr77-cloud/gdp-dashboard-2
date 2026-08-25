@@ -105,6 +105,31 @@ def caricare_dati():
         "anagrafica_ruolo": {}, "anagrafica_nascita": {}, "storico_capitano": {}, "storico_vicecapitano": {}
     }
 
+MAX_BACKUP_STORICO = 10  # Quante versioni precedenti tenere nella scheda "Backup"
+
+def backup_su_foglio(sheet, contenuto_precedente):
+    """Salva 'contenuto_precedente' (il contenuto di A1 PRIMA di sovrascriverlo) come nuova riga
+    nella scheda 'Backup' dello stesso foglio Google, con data e ora. Tiene solo le ultime
+    MAX_BACKUP_STORICO versioni. Se qualcosa va storto qui, non deve mai bloccare il salvataggio
+    principale: eventuali errori vengono ignorati silenziosamente."""
+    try:
+        spreadsheet = sheet.spreadsheet
+        try:
+            foglio_backup = spreadsheet.worksheet("Backup")
+        except gspread.exceptions.WorksheetNotFound:
+            foglio_backup = spreadsheet.add_worksheet(title="Backup", rows=MAX_BACKUP_STORICO + 5, cols=2)
+            foglio_backup.append_row(["Data e Ora", "Contenuto JSON precedente"])
+
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        foglio_backup.append_row([timestamp, contenuto_precedente])
+
+        righe_totali = len(foglio_backup.get_all_values())
+        if righe_totali > MAX_BACKUP_STORICO + 1:  # +1 per la riga di intestazione
+            righe_in_eccesso = righe_totali - (MAX_BACKUP_STORICO + 1)
+            foglio_backup.delete_rows(2, 1 + righe_in_eccesso)
+    except Exception:
+        pass
+
 def salvare_dati():
     salvato_sheets = False
     salvato_firebase = False
@@ -113,6 +138,10 @@ def salvare_dati():
     try:
         sheet = connetti_foglio()
         if sheet:
+            contenuto_precedente = sheet.acell('A1').value
+            if contenuto_precedente:
+                backup_su_foglio(sheet, contenuto_precedente)
+
             stringa_json = json.dumps(st.session_state.db, ensure_ascii=False, indent=4)
             sheet.update_acell('A1', stringa_json)
             salvato_sheets = True
