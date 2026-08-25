@@ -49,9 +49,11 @@ def connetti_foglio():
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(st.secrets["gcp_service_account"]), scope)
         client = gspread.authorize(creds)
-        return client.open_by_key(ID_FOGLIO_GOOGLE).sheet1
+        sheet = client.open_by_key(ID_FOGLIO_GOOGLE).sheet1
+        st.session_state.pop("ultimo_errore_sheets", None)
+        return sheet
     except Exception as e:
-        st.error(f"Errore connessione: {e}")
+        st.session_state["ultimo_errore_sheets"] = str(e)
         return None
 
 CHIAVI_DATI_DEFAULT = ["storico_presenze", "storico_minutaggio", "storico_titolari", "storico_moduli",
@@ -230,9 +232,6 @@ def get_logo_html(per_pdf=False):
     return "<div style='font-size: 50px;'>🛡️</div>"
 
 # --- HELPER NOME/COGNOME ---
-# In tutto il resto dell'app (chiavi dei dizionari storico_*, confronti, ecc.) i giocatori
-# restano identificati dalla stringa "Nome Cognome" (compatibilità con i dati già salvati).
-# Queste funzioni centralizzano SOLO la visualizzazione/ordinamento in formato "Cognome Nome".
 def dividi_nome(giocatore):
     parti = str(giocatore).split(" ", 1)
     nome = parti[0]
@@ -259,6 +258,9 @@ if "edit_evento" not in st.session_state: st.session_state.edit_evento = None
 
 if st.session_state.get("ultimo_errore_salvataggio"):
     st.warning(f"⚠️ Ultimo salvataggio parziale — {st.session_state['ultimo_errore_salvataggio']}")
+
+if st.session_state.get("ultimo_errore_sheets"):
+    st.error(f"❌ Google Sheets non raggiungibile — {st.session_state['ultimo_errore_sheets']}")
 
 menu = st.sidebar.radio("Navigazione", [
     "🔵 Calendario Allenamenti", "🟢 Calendario e Convocazioni", 
