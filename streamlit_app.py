@@ -26,7 +26,7 @@ def connetti_firebase():
     così l'errore arriva davvero visibile invece di sparire in un avviso lampo prima del rerun."""
     cred_dict = dict(st.secrets["firebase_service_account"])
     credenziali = gcp_service_account.Credentials.from_service_account_info(cred_dict)
-    return gcf_firestore.Client(credentials=credenziali, project=cred_dict["project_id"])
+    return gcf_firestore.Client(credentials=credenziali, project=cred_dict["project_id"], database="")
 
 # --- CONFIGURAZIONE REGOLAMENTO ---
 MAX_TITOLARI = 9  # Numero massimo di titolari selezionabili per partita (es. 9 per il calcio a 9)
