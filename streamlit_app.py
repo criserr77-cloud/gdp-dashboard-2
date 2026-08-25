@@ -7,8 +7,8 @@ import base64
 import urllib.parse
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from google.cloud import firestore as gcf_firestore
-from google.oauth2 import service_account as gcp_service_account
+import firebase_admin
+from firebase_admin import credentials, firestore
 
 # --- CONFIGURAZIONE GOOGLE SHEETS ---
 ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
@@ -18,15 +18,16 @@ FIREBASE_COLLECTION = "misterapp"
 FIREBASE_DOCUMENTO = "db_squadra"
 
 def connetti_firebase():
-    """Restituisce un client Firestore collegato al database di default del progetto.
-    Usa direttamente google-cloud-firestore (bypassando il livello firebase_admin.firestore.client(),
-    che su questo progetto genera un errore 'Invalid database id' dovuto a un problema noto
-    nella gestione multi-database delle versioni recenti di firebase-admin).
+    """Inizializza (una sola volta per sessione del server) l'app Firebase Admin e restituisce il client Firestore.
+    Usa un account di servizio (bypassa le regole di sicurezza, niente scadenza a 30gg come la modalità test).
+    Configurazione ripristinata a quella originale (nessun database_id esplicito, nessuna libreria
+    alternativa): è quella con cui avevamo verificato dati reali salvati correttamente su Firestore.
     Non intercetta gli errori qui: li lascia gestire a chi chiama (salvare_dati/caricare_dati),
-    così l'errore arriva davvero visibile invece di sparire in un avviso lampo prima del rerun."""
-    cred_dict = dict(st.secrets["firebase_service_account"])
-    credenziali = gcp_service_account.Credentials.from_service_account_info(cred_dict)
-    return gcf_firestore.Client(credentials=credenziali, project=cred_dict["project_id"], database="")
+    così un eventuale errore resta visibile invece di sparire in un avviso lampo prima del rerun."""
+    if not firebase_admin._apps:
+        cred = credentials.Certificate(dict(st.secrets["firebase_service_account"]))
+        firebase_admin.initialize_app(cred)
+    return firestore.client()
 
 # --- CONFIGURAZIONE REGOLAMENTO ---
 MAX_TITOLARI = 9  # Numero massimo di titolari selezionabili per partita (es. 9 per il calcio a 9)
