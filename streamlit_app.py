@@ -44,6 +44,13 @@ CAMPI_CASA = [
     "Campo Comunale - Parco Urbano, Bovezzo",
 ]
 
+# --- CONFIGURAZIONE CAMPI ALLENAMENTO ---
+CAMPI_ALLENAMENTO = [
+    "Campo Comunale Bovezzo",
+    "Campo Prealpino",
+    "Campo S.Andrea",
+]
+
 def connetti_foglio():
     try:
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
@@ -282,14 +289,19 @@ if menu == "🔵 Calendario Allenamenti":
             if st.session_state.edit_evento == ev["id"]:
                 st.write(f"### ✏️ Modifica Allenamento")
                 curr_date = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").date()
-                mod_data = st.date_input("Data", curr_date, key=f"mod_d_{ev['id']}")
-                mod_nota = st.text_input("Note/Orario", value=ev.get("nota", ""), key=f"mod_n_{ev['id']}")
+                mod_data = st.date_input("Data", curr_date, format="DD/MM/YYYY", key=f"mod_d_{ev['id']}")
+                mod_orario = st.text_input("Orario (es. 17:30)", value=ev.get("orario", ev.get("nota", "")), key=f"mod_or_{ev['id']}")
+                luogo_precedente = ev.get("luogo", "")
+                idx_luogo_mod = CAMPI_ALLENAMENTO.index(luogo_precedente) if luogo_precedente in CAMPI_ALLENAMENTO else 0
+                mod_luogo_all = st.selectbox("Luogo", CAMPI_ALLENAMENTO, index=idx_luogo_mod, key=f"mod_lu_all_{ev['id']}")
                 
                 col_s, col_a = st.columns(2)
                 with col_s:
                     if st.button("💾 Salva", key=f"s_mod_{ev['id']}", type="primary"):
                         ev["data"] = str(mod_data)
-                        ev["nota"] = mod_nota
+                        ev["orario"] = mod_orario
+                        ev["luogo"] = mod_luogo_all
+                        ev.pop("nota", None)
                         st.session_state.edit_evento = None
                         salvare_dati()
                         st.rerun()
@@ -300,7 +312,11 @@ if menu == "🔵 Calendario Allenamenti":
                 st.write("---")
             else:
                 data_f = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").strftime("%d/%m/%Y")
-                titolo_box = f"🔵 Allenamento del {data_f} ({ev.get('nota', '')})"
+                if "orario" in ev or "luogo" in ev:
+                    dettaglio_all = " - ".join(filter(None, [ev.get("orario", ""), ev.get("luogo", "")]))
+                else:
+                    dettaglio_all = ev.get("nota", "")
+                titolo_box = f"🔵 Allenamento del {data_f} ({dettaglio_all})"
                 
                 with st.expander(titolo_box):
                     col_mod, col_del = st.columns([1, 1])
@@ -343,11 +359,12 @@ if menu == "🔵 Calendario Allenamenti":
 
     st.write("---")
     st.subheader("➕ Fissa un nuovo Allenamento")
-    nuova_data = st.date_input("Data", datetime.date.today(), key="new_data_all")
-    nuova_nota = st.text_input("Orario e Luogo (es. '17:30 Campo B')", key="new_nota_all")
+    nuova_data = st.date_input("Data", datetime.date.today(), format="DD/MM/YYYY", key="new_data_all")
+    nuovo_orario = st.text_input("Orario (es. 17:30)", key="new_orario_all")
+    nuovo_luogo_all = st.selectbox("Luogo", CAMPI_ALLENAMENTO, key="new_luogo_all")
     if st.button("Aggiungi Allenamento"):
         nuovo_id = str(int(max([int(e["id"]) for e in st.session_state.db["eventi"]], default=0)) + 1)
-        st.session_state.db["eventi"].append({"id": nuovo_id, "data": str(nuova_data), "tipo": "Allenamento", "nota": nuova_nota})
+        st.session_state.db["eventi"].append({"id": nuovo_id, "data": str(nuova_data), "tipo": "Allenamento", "orario": nuovo_orario, "luogo": nuovo_luogo_all})
         salvare_dati()
         st.rerun()
 
