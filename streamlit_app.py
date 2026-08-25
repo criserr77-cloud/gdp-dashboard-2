@@ -21,11 +21,13 @@ def connetti_firebase():
     """Inizializza (una sola volta per sessione del server) l'app Firebase Admin e restituisce il client Firestore.
     Usa un account di servizio (bypassa le regole di sicurezza, niente scadenza a 30gg come la modalità test).
     Non intercetta gli errori qui: li lascia gestire a chi chiama (salvare_dati/caricare_dati),
-    così l'errore arriva davvero visibile invece di sparire in un avviso lampo prima del rerun."""
+    così l'errore arriva davvero visibile invece di sparire in un avviso lampo prima del rerun.
+    ID database specificato esplicitamente: su questo progetto il database di default si chiama
+    '-default-' (con i trattini) e non '(default)', che è invece quello assunto di default dalla libreria."""
     if not firebase_admin._apps:
         cred = credentials.Certificate(dict(st.secrets["firebase_service_account"]))
         firebase_admin.initialize_app(cred)
-    return firestore.client()
+    return firestore.client(database_id="-default-")
 
 # --- CONFIGURAZIONE REGOLAMENTO ---
 MAX_TITOLARI = 9  # Numero massimo di titolari selezionabili per partita (es. 9 per il calcio a 9)
