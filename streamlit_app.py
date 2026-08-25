@@ -253,6 +253,45 @@ def cognome_nome(giocatore):
 def ordina_giocatori(lista_giocatori):
     return sorted(lista_giocatori, key=lambda g: (dividi_nome(g)[1].lower(), dividi_nome(g)[0].lower()))
 
+# --- HELPER ORARI (menu a tendina a step di 30 minuti) ---
+def genera_orari(inizio="07:00", fine="23:00", step_minuti=30):
+    orari = []
+    t = datetime.datetime.strptime(inizio, "%H:%M")
+    fine_dt = datetime.datetime.strptime(fine, "%H:%M")
+    while t <= fine_dt:
+        orari.append(t.strftime("%H:%M"))
+        t += datetime.timedelta(minutes=step_minuti)
+    return orari
+
+ORARI_DISPONIBILI = genera_orari()
+
+def orario_piu_vicino(valore, lista=ORARI_DISPONIBILI):
+    """Restituisce l'orario della lista più vicino a 'valore' (formato HH:MM).
+    Utile per agganciare alla lista un vecchio orario libero (es. '15:15') salvato prima di questa funzione."""
+    try:
+        t_valore = datetime.datetime.strptime(str(valore), "%H:%M")
+    except (ValueError, TypeError):
+        return lista[0]
+    return min(lista, key=lambda o: abs((datetime.datetime.strptime(o, "%H:%M") - t_valore).total_seconds()))
+
+def un_ora_prima(orario_str):
+    """Calcola l'orario un'ora prima di 'orario_str' (HH:MM), agganciato alla lista di orari disponibili."""
+    try:
+        t = datetime.datetime.strptime(str(orario_str), "%H:%M") - datetime.timedelta(hours=1)
+        return orario_piu_vicino(t.strftime("%H:%M"))
+    except (ValueError, TypeError):
+        return ORARI_DISPONIBILI[0]
+
+def _callback_orario_partita_modifica(ev_id):
+    chiave_partita = f"mod_op_{ev_id}"
+    chiave_convocazione = f"mod_oc_{ev_id}"
+    if chiave_partita in st.session_state:
+        st.session_state[chiave_convocazione] = un_ora_prima(st.session_state[chiave_partita])
+
+def _callback_orario_partita_nuova():
+    if "new_orap" in st.session_state:
+        st.session_state["new_orac"] = un_ora_prima(st.session_state["new_orap"])
+
 # Inizializzazione Session State
 if "db" not in st.session_state: 
     st.session_state.db = caricare_dati()
@@ -401,8 +440,14 @@ elif menu == "🟢 Calendario e Convocazioni":
                         idx_campo_casa = CAMPI_CASA.index(valore_attuale_campo) if valore_attuale_campo in CAMPI_CASA else 0
                         mod_indirizzo = st.selectbox("Quale campo di casa?", CAMPI_CASA, index=idx_campo_casa, key=f"mod_campo_casa_{ev['id']}")
                 with col2:
-                    mod_orap = st.text_input("Ora Partita (es. 15:00)", value=ev.get("ora_partita", ""), key=f"mod_op_{ev['id']}")
-                    mod_orac = st.text_input("Ora Convocazione (es. 14:00)", value=ev.get("ora_convocazione", ""), key=f"mod_oc_{ev['id']}")
+                    chiave_op = f"mod_op_{ev['id']}"
+                    chiave_oc = f"mod_oc_{ev['id']}"
+                    if chiave_op not in st.session_state:
+                        st.session_state[chiave_op] = orario_piu_vicino(ev.get("ora_partita", ORARI_DISPONIBILI[0]))
+                    if chiave_oc not in st.session_state:
+                        st.session_state[chiave_oc] = orario_piu_vicino(ev.get("ora_convocazione") or un_ora_prima(st.session_state[chiave_op]))
+                    mod_orap = st.selectbox("Ora Partita", ORARI_DISPONIBILI, key=chiave_op, on_change=_callback_orario_partita_modifica, args=(ev['id'],))
+                    mod_orac = st.selectbox("Ora Convocazione", ORARI_DISPONIBILI, key=chiave_oc)
                     
                     valore_attuale_nota = ev.get("nota", "Campionato")
                     indice_nota = opzioni_tipo_partita.index(valore_attuale_nota) if valore_attuale_nota in opzioni_tipo_partita else 0
@@ -773,8 +818,12 @@ elif menu == "🟢 Calendario e Convocazioni":
         else:
             nuovo_indirizzo = st.selectbox("Quale campo di casa?", CAMPI_CASA, key="new_campo_casa")
     with col2:
-        nuova_orap = st.text_input("Ora Partita (es. 15:00)", key="new_orap")
-        nuova_orac = st.text_input("Ora Convocazione (es. 14:00)", key="new_orac")
+        if "new_orap" not in st.session_state:
+            st.session_state["new_orap"] = orario_piu_vicino("15:00")
+        if "new_orac" not in st.session_state:
+            st.session_state["new_orac"] = un_ora_prima(st.session_state["new_orap"])
+        nuova_orap = st.selectbox("Ora Partita", ORARI_DISPONIBILI, key="new_orap", on_change=_callback_orario_partita_nuova)
+        nuova_orac = st.selectbox("Ora Convocazione", ORARI_DISPONIBILI, key="new_orac")
         nuova_nota = st.selectbox("Tipo Partita", ["Campionato", "Amichevole", "Coppa Brescia"], key="new_notap")
         nuova_nota_agg = st.text_input("Note aggiuntive", key="new_nota_agg")
         
