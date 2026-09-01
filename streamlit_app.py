@@ -14,7 +14,7 @@ from firebase_admin import credentials, firestore
 ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
 
 # --- CONFIGURAZIONE FIREBASE (backup, oltre a Google Sheets) ---
-FIREBASE_ATTIVO = False  # In pausa: rimetti a True quando vuoi riattivare il backup su Firebase
+FIREBASE_ATTIVO = True  # In pausa: rimetti a True quando vuoi riattivare il backup su Firebase
 FIREBASE_COLLECTION = "misterapp"
 FIREBASE_DOCUMENTO = "db_squadra"
 
