@@ -1267,6 +1267,50 @@ elif menu == "🏃 Gestione Rosa":
                 st.success("✅ Rosa aggiornata con successo!")
                 st.rerun()
 
+        with st.expander("💾 Backup e Ripristino"):
+            st.write("#### ⬇️ Scarica Backup")
+            st.caption("Scarica una copia completa di tutti i dati (rosa, presenze, partite, formazioni) in un file .json sul tuo telefono o computer.")
+            st.download_button(
+                label="⬇️ Scarica Backup completo (.json)",
+                data=json.dumps(st.session_state.db, ensure_ascii=False, indent=4),
+                file_name=f"backup_misterapp_{datetime.date.today().strftime('%Y%m%d')}.json",
+                mime="application/json",
+                key="btn_scarica_backup"
+            )
+
+            st.write("---")
+            st.write("#### ⬆️ Importa Backup")
+            st.caption("⚠️ Attenzione: importare un backup SOSTITUISCE tutti i dati attuali dell'app con quelli del file. Usalo solo se sai cosa stai facendo (es. per ripristinare uno stato precedente).")
+            file_caricato = st.file_uploader("Carica un file di backup (.json)", type=["json"], key="upload_backup")
+
+            if file_caricato is not None:
+                try:
+                    contenuto_caricato = json.loads(file_caricato.read().decode("utf-8"))
+                except json.JSONDecodeError:
+                    st.error("❌ Il file caricato non è un JSON valido.")
+                    contenuto_caricato = None
+                except Exception as e:
+                    st.error(f"❌ Errore durante la lettura del file: {e}")
+                    contenuto_caricato = None
+
+                if contenuto_caricato is not None:
+                    if not isinstance(contenuto_caricato, dict) or "ragazzi" not in contenuto_caricato or "eventi" not in contenuto_caricato:
+                        st.error("❌ Il file non sembra un backup valido di MisterApp (mancano i campi essenziali 'ragazzi' o 'eventi').")
+                    else:
+                        n_giocatori = len(contenuto_caricato.get("ragazzi", []))
+                        n_eventi = len(contenuto_caricato.get("eventi", []))
+                        st.warning(f"⚠️ Questo file contiene **{n_giocatori} giocatori** e **{n_eventi} eventi** (allenamenti/partite). Importandolo, TUTTI i dati attuali dell'app verranno sostituiti con questi. L'operazione non si può annullare, a meno di avere un backup precedente da reimportare.")
+                        conferma_import = st.checkbox("Ho capito, voglio procedere con l'importazione", key="conferma_importazione")
+                        if conferma_import:
+                            if st.button("♻️ Conferma e Importa Backup", key="btn_conferma_importa", type="primary"):
+                                for k in CHIAVI_DATI_DEFAULT:
+                                    if k not in contenuto_caricato: contenuto_caricato[k] = {}
+                                st.session_state.db = contenuto_caricato
+                                st.session_state.rosa_editor_version += 1
+                                salvare_dati()
+                                st.success("✅ Backup importato e salvato con successo!")
+                                st.rerun()
+
         with st.expander("🧹 Pulizia dati orfani (avanzato)"):
             st.caption("Rimuove dallo storico (presenze, formazioni, gol, fasce, anagrafica) qualsiasi nome che non è più nella rosa attuale. Utile per ripulire tracce di giocatori cancellati in passato, prima che la pulizia automatica esistesse.")
             if st.button("🧹 Esegui pulizia dati orfani", key="btn_pulizia_orfani"):
