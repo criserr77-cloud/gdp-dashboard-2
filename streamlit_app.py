@@ -33,10 +33,10 @@ MAX_TITOLARI = 9  # Numero massimo di titolari selezionabili per partita (es. 9 
 
 # --- CONFIGURAZIONE COLORI (tema Blu/Verde) ---
 # Cambia solo questi valori per modificare la palette in tutta l'app e nei documenti scaricabili.
-COLORE_BLU = "#1565C0"          # Blu principale (Convocazioni, accenti, pulsanti)
-COLORE_BLU_CHIARO = "#E3F2FD"   # Blu chiaro (sfondo intestazioni documento Convocazioni)
-COLORE_VERDE = "#2E7D32"        # Verde principale (Formazione, accenti, pulsanti)
-COLORE_VERDE_CHIARO = "#E8F5E9" # Verde chiaro (sfondo intestazioni documento Formazione)
+COLORE_BLU = "#002255"          # Blu navy esatto dello stemma (campionato dall'immagine) — colore principale
+COLORE_BLU_CHIARO = "#E7ECF5"   # Blu chiaro (sfondo intestazioni documento Convocazioni)
+COLORE_BLU_ACCENTO = "#1E4D8C"  # Blu royal più chiaro, accento secondario (Formazione, sfumature pulsanti)
+COLORE_BLU_ACCENTO_CHIARO = "#DCE6F5" # Blu accento chiaro (sfondo intestazioni documento Formazione)
 
 # --- CONFIGURAZIONE CAMPI DI CASA ---
 # Aggiungi/modifica qui se cambiano i campi disponibili per le partite in casa.
@@ -185,12 +185,12 @@ st.markdown(f"""
         border-radius: 15px; padding: 20px; 
         box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
         margin-bottom: 20px; 
-        border: 1px solid {COLORE_VERDE};
+        border: 1px solid {COLORE_BLU_ACCENTO};
     }}
     
     /* MENU LATERALE RESPONSIVE ED INGRANDITO - tema Blu/Verde */
     [data-testid="stSidebar"] {{
-        border-right: 2px solid {COLORE_VERDE};
+        border-right: 2px solid {COLORE_BLU_ACCENTO};
     }}
     [data-testid="stSidebar"] div[role="radiogroup"] label {{
         padding: 18px 20px !important;
@@ -202,7 +202,7 @@ st.markdown(f"""
         transition: border-color 0.2s ease;
     }}
     [data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
-        border-color: {COLORE_VERDE};
+        border-color: {COLORE_BLU_ACCENTO};
     }}
     [data-testid="stSidebar"] div[role="radiogroup"] label p {{
         font-size: 22px !important;
@@ -212,14 +212,14 @@ st.markdown(f"""
 
     /* Pulsanti primari (Salva, Aggiungi, ecc.) con sfumatura Blu -> Verde */
     button[kind="primary"], .stButton button[kind="primary"] {{
-        background: linear-gradient(135deg, {COLORE_BLU} 0%, {COLORE_VERDE} 100%) !important;
+        background: linear-gradient(135deg, {COLORE_BLU} 0%, {COLORE_BLU_ACCENTO} 100%) !important;
         border: none !important;
         color: white !important;
     }}
 
     /* Intestazioni di pagina con accento verde */
     h1, h2 {{
-        border-left: 5px solid {COLORE_VERDE};
+        border-left: 5px solid {COLORE_BLU_ACCENTO};
         padding-left: 12px;
     }}
     </style>
@@ -340,6 +340,9 @@ if st.session_state.get("ultimo_errore_salvataggio"):
 
 if st.session_state.get("ultimo_errore_sheets"):
     st.error(f"❌ Google Sheets non raggiungibile — {st.session_state['ultimo_errore_sheets']}")
+
+with st.sidebar:
+    st.markdown(f"<div style='text-align:center; padding: 12px 0 14px 0;'><div style='display:inline-block; background:white; border-radius:12px; padding:8px 10px;'>{get_logo_html()}</div></div>", unsafe_allow_html=True)
 
 menu = st.sidebar.radio("Navigazione", [
     "🔵 Calendario Allenamenti", "🟢 Calendario e Convocazioni", 
@@ -579,7 +582,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             
                             badge = ""
                             if t == capitano_evento: badge = f" <span style='color: {COLORE_BLU}; font-weight: bold;'>(C)</span>"
-                            elif t == vice_evento: badge = f" <span style='color: {COLORE_VERDE}; font-weight: bold;'>(VC)</span>"
+                            elif t == vice_evento: badge = f" <span style='color: {COLORE_BLU_ACCENTO}; font-weight: bold;'>(VC)</span>"
                             
                             righe_formazione += f"<tr><td style='border: 1px solid black; padding: 5px; font-weight: bold; width: 10%;'>{num}</td><td style='border: 1px solid black; padding: 5px; text-align: left; width: 45%;'>{cognome_t}</td><td style='border: 1px solid black; padding: 5px; text-align: left; width: 45%;'>{nome_t}{badge}</td></tr>"
                     else:
@@ -617,12 +620,12 @@ elif menu == "🟢 Calendario e Convocazioni":
 
                     # HTML Formazione
                     html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%;'>
-<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_VERDE};'>
+<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU_ACCENTO};'>
 <tr>
 <td style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
 <td style='width: 70%; border: 1px solid black; padding: 0;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center;'>
-<tr><td style='padding: 5px; font-weight: bold; font-size: 16px; background-color: {COLORE_VERDE_CHIARO}; border-bottom: 1px solid black;'>FORMAZIONE UFFICIALE</td></tr>
+<tr><td style='padding: 5px; font-weight: bold; font-size: 16px; background-color: {COLORE_BLU_ACCENTO_CHIARO}; border-bottom: 1px solid black;'>FORMAZIONE UFFICIALE</td></tr>
 <tr><td style='padding: 5px; border-bottom: 1px solid black;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
 <tr><td style='padding: 5px; font-weight: bold; border-bottom: 1px solid black;'>TIPO PARTITA: {tipo_partita}</td></tr>
 <tr><td style='padding: 5px;'>DATA: {data_f}</td></tr>
@@ -630,8 +633,8 @@ elif menu == "🟢 Calendario e Convocazioni":
 </td>
 </tr>
 </table>
-<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_VERDE}; border-top: none;'>
-<tr style='font-weight: bold; background-color: {COLORE_VERDE_CHIARO};'>
+<table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU_ACCENTO}; border-top: none;'>
+<tr style='font-weight: bold; background-color: {COLORE_BLU_ACCENTO_CHIARO};'>
 <td style='border: 1px solid black; padding: 5px; width: 10%;'>N°</td>
 <td style='border: 1px solid black; padding: 5px; width: 45%;'>Cognome</td>
 <td style='border: 1px solid black; padding: 5px; width: 45%;'>Nome</td>
