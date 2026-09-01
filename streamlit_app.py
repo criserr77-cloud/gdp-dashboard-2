@@ -1042,7 +1042,18 @@ elif menu == "📈 Statistiche Squadra":
         except:
             pass
         return 0, 0, 0, 0
-        
+
+    def esito_singolo_tempo(ris_str, luogo="Casa"):
+        """Restituisce 'V', 'P' o 'S' per un singolo tempo, oppure None se non è stato inserito un risultato."""
+        if not str(ris_str).strip():
+            return None
+        pu, pa, gf, gs = parse_tempo(ris_str, luogo)
+        if pu == 0 and pa == 0:
+            return None
+        if pu > pa: return "V"
+        elif pu < pa: return "S"
+        else: return "P"
+
     eventi_partita = [ev for ev in st.session_state.db["eventi"] if ev["tipo"] in ["Partita", "Torneo"]]
     
     tot_partite = 0
@@ -1051,6 +1062,9 @@ elif menu == "📈 Statistiche Squadra":
     vittorie = 0
     pareggi = 0
     sconfitte = 0
+    vittorie_t1, pareggi_t1, sconfitte_t1 = 0, 0, 0
+    vittorie_t2, pareggi_t2, sconfitte_t2 = 0, 0, 0
+    vittorie_t3, pareggi_t3, sconfitte_t3 = 0, 0, 0
     
     righe_partite = ""
     
@@ -1064,6 +1078,19 @@ elif menu == "📈 Statistiche Squadra":
             tot_partite += 1
             luogo_gara = ev.get("luogo", "Casa")
             e_coppa_stat = (ev.get("nota", "Campionato") == "Coppa Brescia")
+
+            esito_t1 = esito_singolo_tempo(t1, luogo_gara)
+            esito_t2 = esito_singolo_tempo(t2, luogo_gara)
+            esito_t3 = esito_singolo_tempo(t3, luogo_gara)
+            if esito_t1 == "V": vittorie_t1 += 1
+            elif esito_t1 == "P": pareggi_t1 += 1
+            elif esito_t1 == "S": sconfitte_t1 += 1
+            if esito_t2 == "V": vittorie_t2 += 1
+            elif esito_t2 == "P": pareggi_t2 += 1
+            elif esito_t2 == "S": sconfitte_t2 += 1
+            if esito_t3 == "V": vittorie_t3 += 1
+            elif esito_t3 == "P": pareggi_t3 += 1
+            elif esito_t3 == "S": sconfitte_t3 += 1
             pu1, pa1, gf1, gs1 = parse_tempo(t1, luogo_gara)
             pu2, pa2, gf2, gs2 = parse_tempo(t2, luogo_gara)
             pu3, pa3, gf3, gs3 = parse_tempo(t3, luogo_gara)
@@ -1130,6 +1157,37 @@ elif menu == "📈 Statistiche Squadra":
 </tr>
 </table>"""
     st.markdown(riepilogo_html, unsafe_allow_html=True)
+
+    st.write("---")
+    st.subheader("⏱️ Statistiche per Tempo")
+    st.caption("Vittorie, pareggi e sconfitte contati singolarmente per ciascun tempo di gioco, su tutte le partite con un risultato inserito. Le partite di Coppa hanno solo 1° e 2° tempo, per questo non contribuiscono alla riga del 3° tempo.")
+    tabella_tempi_html = f"""<table style="width: 100%; border-collapse: collapse; text-align: center; margin-bottom: 20px; color: var(--text-color);">
+<tr style="background-color: rgba(128,128,128,0.2); font-weight: bold;">
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Tempo</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Vittorie</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Pareggi</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Sconfitte</td>
+</tr>
+<tr>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); font-weight: bold;">1° Tempo</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); color: #4CAF50; font-weight: bold;">{vittorie_t1}</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); color: #FF9800; font-weight: bold;">{pareggi_t1}</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); color: #F44336; font-weight: bold;">{sconfitte_t1}</td>
+</tr>
+<tr>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); font-weight: bold;">2° Tempo</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); color: #4CAF50; font-weight: bold;">{vittorie_t2}</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); color: #FF9800; font-weight: bold;">{pareggi_t2}</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); color: #F44336; font-weight: bold;">{sconfitte_t2}</td>
+</tr>
+<tr>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); font-weight: bold;">3° Tempo</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); color: #4CAF50; font-weight: bold;">{vittorie_t3}</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); color: #FF9800; font-weight: bold;">{pareggi_t3}</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); color: #F44336; font-weight: bold;">{sconfitte_t3}</td>
+</tr>
+</table>"""
+    st.markdown(tabella_tempi_html, unsafe_allow_html=True)
     
     st.write("---")
     st.subheader("📝 Dettaglio Risultati Partite")
@@ -1150,7 +1208,7 @@ elif menu == "📈 Statistiche Squadra":
         st.markdown(tabella_html, unsafe_allow_html=True)
         
         if tot_partite > 0:
-            html_squadra = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Squadra</h2>{riepilogo_html}<h2>Dettaglio Partite</h2>{tabella_html}</body></html>"
+            html_squadra = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Squadra</h2>{riepilogo_html}<h2>Statistiche per Tempo</h2>{tabella_tempi_html}<h2>Dettaglio Partite</h2>{tabella_html}</body></html>"
             html_squadra = html_squadra.replace('var(--text-color)', 'black').replace('rgba(128,128,128,0.2)', '#f0f0f0').replace('rgba(128,128,128,0.3)', 'black')
             
             st.download_button(
