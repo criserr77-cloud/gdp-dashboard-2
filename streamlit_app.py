@@ -710,13 +710,23 @@ elif menu == "🟢 Calendario e Convocazioni":
 
                     with tab_formazione:
                         st.write("#### 🏆 Risultato Gara")
-                        col_t1, col_t2, col_t3 = st.columns(3)
-                        with col_t1:
-                            ris_t1 = st.text_input("1° Tempo (es. 1-0)", value=ris_evento.get("t1", ""), key=f"ris_t1_{ev['id']}")
-                        with col_t2:
-                            ris_t2 = st.text_input("2° Tempo (es. 2-2)", value=ris_evento.get("t2", ""), key=f"ris_t2_{ev['id']}")
-                        with col_t3:
-                            ris_t3 = st.text_input("3° Tempo (es. 0-1)", value=ris_evento.get("t3", ""), key=f"ris_t3_{ev['id']}")
+                        e_coppa = (tipo_partita == "Coppa Brescia")
+                        if e_coppa:
+                            st.caption("Partita di Coppa: risultato su 2 tempi.")
+                            col_t1, col_t2 = st.columns(2)
+                            with col_t1:
+                                ris_t1 = st.text_input("1° Tempo (es. 1-0)", value=ris_evento.get("t1", ""), key=f"ris_t1_{ev['id']}")
+                            with col_t2:
+                                ris_t2 = st.text_input("2° Tempo (es. 2-2)", value=ris_evento.get("t2", ""), key=f"ris_t2_{ev['id']}")
+                            ris_t3 = ""
+                        else:
+                            col_t1, col_t2, col_t3 = st.columns(3)
+                            with col_t1:
+                                ris_t1 = st.text_input("1° Tempo (es. 1-0)", value=ris_evento.get("t1", ""), key=f"ris_t1_{ev['id']}")
+                            with col_t2:
+                                ris_t2 = st.text_input("2° Tempo (es. 2-2)", value=ris_evento.get("t2", ""), key=f"ris_t2_{ev['id']}")
+                            with col_t3:
+                                ris_t3 = st.text_input("3° Tempo (es. 0-1)", value=ris_evento.get("t3", ""), key=f"ris_t3_{ev['id']}")
                         
                         st.write("---")
                         st.write("#### ⚽ Inserisci Formazione e Prestazioni")
