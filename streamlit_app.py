@@ -674,7 +674,16 @@ elif menu == "🟢 Calendario e Convocazioni":
                         if not st.session_state.db["ragazzi"]:
                             st.warning("Rosa vuota.")
                         else:
-                            st.write("#### 🏃 Seleziona Convocati")
+                            col_titolo_conv, col_azzera_conv = st.columns([2, 1])
+                            with col_titolo_conv:
+                                st.write("#### 🏃 Seleziona Convocati")
+                            with col_azzera_conv:
+                                if st.button("🔄 Azzera Convocazioni", key=f"azzera_conv_{ev['id']}"):
+                                    if ev["id"] in st.session_state.db["storico_presenze"]:
+                                        del st.session_state.db["storico_presenze"][ev["id"]]
+                                    salvare_dati()
+                                    st.success("Convocazioni azzerate!")
+                                    st.rerun()
                             resoconto_corrente = {}
                             opzioni = ["🟢 Convocato", "🔴 Non Convocato"]
                             
