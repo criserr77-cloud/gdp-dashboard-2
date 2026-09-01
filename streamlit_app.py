@@ -686,6 +686,11 @@ elif menu == "🟢 Calendario e Convocazioni":
                                     st.rerun()
                             resoconto_corrente = {}
                             opzioni = ["🟢 Convocato", "🔴 Non Convocato"]
+
+                            if ev["id"] in st.session_state.db["storico_presenze"]:
+                                st.success("✅ Convocazioni salvate")
+                            else:
+                                st.error("❌ Convocazioni non ancora salvate")
                             
                             for ragazzo in ordina_giocatori(st.session_state.db["ragazzi"]):
                                 col_nome, col_stato = st.columns([1, 2])
