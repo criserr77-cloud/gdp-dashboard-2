@@ -409,7 +409,16 @@ if menu == "🔵 Calendario Allenamenti":
                             st.rerun()
                     
                     st.write("---")
-                    st.write(f"#### 📋 Registro Presenze")
+                    col_titolo_pres, col_azzera_pres = st.columns([2, 1])
+                    with col_titolo_pres:
+                        st.write(f"#### 📋 Registro Presenze")
+                    with col_azzera_pres:
+                        if st.button("🔄 Azzera Presenze", key=f"azzera_pres_{ev['id']}"):
+                            if ev["id"] in st.session_state.db["storico_presenze"]:
+                                del st.session_state.db["storico_presenze"][ev["id"]]
+                            salvare_dati()
+                            st.success("Presenze azzerate!")
+                            st.rerun()
                     
                     if not st.session_state.db["ragazzi"]:
                         st.warning("Rosa vuota.")
