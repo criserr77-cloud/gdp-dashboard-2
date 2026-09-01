@@ -1063,6 +1063,7 @@ elif menu == "📈 Statistiche Squadra":
         if t1 or t2 or t3:
             tot_partite += 1
             luogo_gara = ev.get("luogo", "Casa")
+            e_coppa_stat = (ev.get("nota", "Campionato") == "Coppa Brescia")
             pu1, pa1, gf1, gs1 = parse_tempo(t1, luogo_gara)
             pu2, pa2, gf2, gs2 = parse_tempo(t2, luogo_gara)
             pu3, pa3, gf3, gs3 = parse_tempo(t3, luogo_gara)
@@ -1076,21 +1077,31 @@ elif menu == "📈 Statistiche Squadra":
             tot_gf += gf_partita
             tot_gs += gs_partita
             
-            esito_tabella = f"{p_uso_tot} - {p_avv_tot}"
-            
-            if p_uso_tot > p_avv_tot:
-                vittorie += 1
-            elif p_uso_tot < p_avv_tot:
-                sconfitte += 1
-            else:
+            if e_coppa_stat:
+                # Partita di Coppa: trattata come una partita normale, risultato finale = somma dei gol dei 2 tempi
+                esito_tabella = f"{gf_partita} - {gs_partita}"
                 if gf_partita > gs_partita:
                     vittorie += 1
-                    esito_tabella += " <br><span style='font-size:12px; color: #4CAF50;'>(V per Diff. Reti)</span>"
                 elif gf_partita < gs_partita:
                     sconfitte += 1
-                    esito_tabella += " <br><span style='font-size:12px; color: #F44336;'>(S per Diff. Reti)</span>"
                 else:
                     pareggi += 1
+            else:
+                esito_tabella = f"{p_uso_tot} - {p_avv_tot}"
+
+                if p_uso_tot > p_avv_tot:
+                    vittorie += 1
+                elif p_uso_tot < p_avv_tot:
+                    sconfitte += 1
+                else:
+                    if gf_partita > gs_partita:
+                        vittorie += 1
+                        esito_tabella += " <br><span style='font-size:12px; color: #4CAF50;'>(V per Diff. Reti)</span>"
+                    elif gf_partita < gs_partita:
+                        sconfitte += 1
+                        esito_tabella += " <br><span style='font-size:12px; color: #F44336;'>(S per Diff. Reti)</span>"
+                    else:
+                        pareggi += 1
                 
             data_f = datetime.datetime.strptime(ev["data"], "%Y-%m-%d").strftime("%d/%m/%Y")
             
