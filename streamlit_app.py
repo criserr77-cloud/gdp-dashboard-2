@@ -565,7 +565,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                         nome_iniziale_wa = f"{nome_wa[0].upper()}." if nome_wa else ""
                         c_wa = "✓" if is_convocato else " "
                         nc_wa = "✓" if not is_convocato else " "
-                        righe_whatsapp += f"{cognome_wa[:14]:<14}{nome_iniziale_wa:<5}{c_wa:^4}{nc_wa:^4}\n"
+                        righe_whatsapp += f"{cognome_wa[:9]:<10}{nome_iniziale_wa:<4}{c_wa:^3}{nc_wa:^3}\n"
                             
                         righe_giocatori += f"<tr><td style='border: 1px solid black; padding: 5px;'>{riga_num}</td><td style='border: 1px solid black; padding: 5px; text-align: left;'>{cognome_nome(ragazzo)}</td><td style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
                         riga_num += 1
@@ -650,8 +650,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                     whatsapp_text += f"🏟️ *Luogo:* {ind_campo}\n"
                     if note_agg: whatsapp_text += f"📝 *Note:* {note_agg}\n"
                         
-                    intestazione_wa = f"{'Cognome':<14}{'Nome':<5}{'C ':^4}{'NC':^4}\n"
-                    separatore_wa = "-" * 27 + "\n"
+                    intestazione_wa = f"{'Cognome':<10}{'Nome':<4}{'C':^3}{'NC':^3}\n"
+                    separatore_wa = "-" * 20 + "\n"
                     whatsapp_text += f"\n*ELENCO GIOCATORI:*\n"
                     whatsapp_text += "```\n" + intestazione_wa + separatore_wa + righe_whatsapp + "```\n"
                     whatsapp_text += "\n*Forza USO UNITED!* 💙💚"
