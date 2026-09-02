@@ -1270,12 +1270,11 @@ elif menu == "🏃 Gestione Rosa":
             hide_index=True,
             width="stretch",
             num_rows="fixed",
-            column_order=["Cognome", "Nome", "Ruolo", "🗑️ Elimina"],
+            column_order=["Cognome", "Nome", "Data di Nascita", "🗑️ Elimina"],
             column_config={
                 "Cognome": st.column_config.TextColumn("Cognome", width="medium"),
                 "Nome": st.column_config.TextColumn("Nome", width="medium"),
                 "Data di Nascita": st.column_config.DateColumn("Data di Nascita", format="DD/MM/YYYY", width="small"),
-                "Ruolo": st.column_config.SelectboxColumn("Ruolo", options=ruoli_disp, width="medium"),
                 "🗑️ Elimina": st.column_config.CheckboxColumn("🗑️ Elimina", width="small"),
             },
         )
@@ -1469,10 +1468,10 @@ elif menu == "🏃 Gestione Rosa":
 
     st.subheader("➕ Aggiungi un nuovo giocatore")
     with st.container():
-        col_c, col_n, col_r = st.columns([2, 2, 1.5])
+        col_c, col_n, col_d = st.columns([2, 2, 1.5])
         with col_c: nuovo_cognome_ins = st.text_input("Cognome:", key="nuovo_ins_cognome")
         with col_n: nuovo_nome_ins = st.text_input("Nome:", key="nuovo_ins_nome")
-        with col_r: nuovo_ruolo_ins = st.selectbox("Ruolo", ["Portiere", "Difensore", "Centrocampista", "Attaccante", "Non definito"])
+        with col_d: nuova_nascita_ins = st.date_input("Data di Nascita", datetime.date(2014, 1, 1))
         
         if st.button("Inserisci in Squadra", type="primary"):
             nome_completo_ins = f"{nuovo_nome_ins.strip()} {nuovo_cognome_ins.strip()}".strip()
@@ -1482,7 +1481,7 @@ elif menu == "🏃 Gestione Rosa":
                 st.error(f"'{cognome_nome(nome_completo_ins)}' è già presente in rosa.")
             else:
                 st.session_state.db["ragazzi"].append(nome_completo_ins)
-                st.session_state.db.setdefault("anagrafica_ruolo", {})[nome_completo_ins] = nuovo_ruolo_ins
+                st.session_state.db.setdefault("anagrafica_nascita", {})[nome_completo_ins] = str(nuova_nascita_ins)
                 salvare_dati()
                 st.success(f"⚽ {cognome_nome(nome_completo_ins)} aggiunto alla rosa!")
                 st.rerun()
