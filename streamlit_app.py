@@ -1019,6 +1019,9 @@ elif menu == "🏆 Statistiche Giocatori":
             for ev_id in id_gare:
                 gol_tot += st.session_state.db["storico_gol"].get(str(ev_id), {}).get(ragazzo, 0)
 
+            volte_capitano = sum(1 for ev_id in id_gare if st.session_state.db.get("storico_capitano", {}).get(ev_id) == ragazzo)
+            volte_vice = sum(1 for ev_id in id_gare if st.session_state.db.get("storico_vicecapitano", {}).get(ev_id) == ragazzo)
+
             tabella_gare.append({
                 "Giocatore": cognome_nome(ragazzo),
                 "🟢 Convocato": convocati,
@@ -1026,14 +1029,16 @@ elif menu == "🏆 Statistiche Giocatori":
                 "👕 Titolare": presenze_titolare,
                 "📈 % Conv.": f"{pct_conv:.2f}%",
                 "🏅 % Titolare": f"{pct_tit:.2f}%",
-                "⚽ Gol Fatti": gol_tot
+                "⚽ Gol Fatti": gol_tot,
+                "© C": volte_capitano,
+                "🎖️ VC": volte_vice
             })
         st.table(tabella_gare)
         
         if tabella_gare:
-            html_giocatori = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Giocatori</h2><p><strong>Gare totali: {totale_gare}</strong></p><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>Giocatore</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🟢 Convocato</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🔴 Non Conv.</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>👕 Titolare</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>📈 % Conv.</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🏅 % Titolare</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>⚽ Gol Fatti</th></tr>"
+            html_giocatori = f"<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; color: black;'><h2>Statistiche Giocatori</h2><p><strong>Gare totali: {totale_gare}</strong></p><table border='1' style='border-collapse: collapse; text-align: center; width:100%;'><tr><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>Giocatore</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🟢 Convocato</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🔴 Non Conv.</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>👕 Titolare</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>📈 % Conv.</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🏅 % Titolare</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>⚽ Gol Fatti</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>© C</th><th style='padding:8px; background-color: {COLORE_BLU_CHIARO};'>🎖️ VC</th></tr>"
             for row in tabella_gare:
-                html_giocatori += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Convocato']}</td><td style='padding:8px;'>{row['🔴 Non Conv.']}</td><td style='padding:8px;'>{row['👕 Titolare']}</td><td style='padding:8px;'>{row['📈 % Conv.']}</td><td style='padding:8px;'>{row['🏅 % Titolare']}</td><td style='padding:8px;'>{row['⚽ Gol Fatti']}</td></tr>"
+                html_giocatori += f"<tr><td style='padding:8px;'>{row['Giocatore']}</td><td style='padding:8px;'>{row['🟢 Convocato']}</td><td style='padding:8px;'>{row['🔴 Non Conv.']}</td><td style='padding:8px;'>{row['👕 Titolare']}</td><td style='padding:8px;'>{row['📈 % Conv.']}</td><td style='padding:8px;'>{row['🏅 % Titolare']}</td><td style='padding:8px;'>{row['⚽ Gol Fatti']}</td><td style='padding:8px;'>{row['© C']}</td><td style='padding:8px;'>{row['🎖️ VC']}</td></tr>"
             html_giocatori += "</table></body></html>"
             
             st.download_button(
