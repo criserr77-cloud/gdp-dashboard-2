@@ -420,6 +420,11 @@ if menu == "🔵 Calendario Allenamenti":
                             salvare_dati()
                             st.success("Presenze azzerate!")
                             st.rerun()
+
+                    if ev["id"] in st.session_state.db["storico_presenze"]:
+                        st.success("✅ Presenze salvate")
+                    else:
+                        st.error("❌ Presenze non ancora salvate")
                     
                     if not st.session_state.db["ragazzi"]:
                         st.warning("Rosa vuota.")
