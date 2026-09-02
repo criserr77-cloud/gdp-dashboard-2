@@ -658,8 +658,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                     html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU_ACCENTO};'>
 <tr>
-<td style='width: 25%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
-<td style='width: 75%; border: 1px solid black; padding: 0;'>
+<td style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
+<td style='width: 70%; border: 1px solid black; padding: 0;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center;'>
 <tr><td style='padding: 5px; font-weight: bold; font-size: 16px; background-color: {COLORE_BLU_ACCENTO_CHIARO}; border-bottom: 1px solid black;'>FORMAZIONE UFFICIALE</td></tr>
 <tr><td style='padding: 5px; border-bottom: 1px solid black;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
@@ -671,9 +671,9 @@ elif menu == "🟢 Calendario e Convocazioni":
 </table>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU_ACCENTO}; border-top: none;'>
 <tr style='font-weight: bold; background-color: {COLORE_BLU_ACCENTO_CHIARO};'>
-<td style='border: 1px solid black; padding: 5px; width: 7%;'>N°</td>
+<td style='border: 1px solid black; padding: 5px; width: 10%;'>N°</td>
 <td style='border: 1px solid black; padding: 5px; width: 48%;'>Cognome</td>
-<td style='border: 1px solid black; padding: 5px; width: 45%;'>Nome</td>
+<td style='border: 1px solid black; padding: 5px; width: 42%;'>Nome</td>
 </tr>
 {righe_formazione}
 </table>
