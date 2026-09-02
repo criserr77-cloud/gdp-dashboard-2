@@ -671,9 +671,9 @@ elif menu == "🟢 Calendario e Convocazioni":
 </table>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU_ACCENTO}; border-top: none;'>
 <tr style='font-weight: bold; background-color: {COLORE_BLU_ACCENTO_CHIARO};'>
-<td style='border: 1px solid black; padding: 5px; width: 8%;'>N°</td>
-<td style='border: 1px solid black; padding: 5px; width: 52%;'>Cognome</td>
-<td style='border: 1px solid black; padding: 5px; width: 40%;'>Nome</td>
+<td style='border: 1px solid black; padding: 5px; width: 7%;'>N°</td>
+<td style='border: 1px solid black; padding: 5px; width: 48%;'>Cognome</td>
+<td style='border: 1px solid black; padding: 5px; width: 45%;'>Nome</td>
 </tr>
 {righe_formazione}
 </table>
