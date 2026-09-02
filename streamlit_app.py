@@ -3,6 +3,7 @@ import pandas as pd
 import datetime
 import json
 import os
+import re
 import base64
 import urllib.parse
 import gspread
@@ -1370,6 +1371,54 @@ elif menu == "🏃 Gestione Rosa":
                 salvare_dati()
                 st.success("✅ Rosa aggiornata con successo!")
                 st.rerun()
+
+        with st.expander("📋 Importa elenco giocatori da testo"):
+            st.caption("Incolla un elenco, una riga per giocatore, nel formato: **Cognome Nome GG/MM/AAAA** (va bene anche un cognome composto da più parole, es. 'Prandini Busi Giuliano 19/06/2014'). I giocatori già presenti in rosa (stesso nome e cognome) vengono saltati automaticamente, gli altri dati dell'app (partite, allenamenti) non vengono toccati.")
+            testo_elenco = st.text_area("Elenco da incollare", height=200, key="testo_elenco_import", placeholder="Abrami Tommaso 07/11/2014\nBertelli Nicolò 11/10/2014\n...")
+
+            if st.button("📋 Importa Elenco", key="btn_importa_elenco"):
+                aggiunti, gia_presenti, righe_non_riconosciute = [], [], []
+                for riga in testo_elenco.splitlines():
+                    riga = riga.strip()
+                    if not riga:
+                        continue
+                    match_data = re.search(r'(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})\s*$', riga)
+                    if not match_data:
+                        righe_non_riconosciute.append(riga)
+                        continue
+                    giorno, mese, anno = match_data.groups()
+                    parte_nome = riga[:match_data.start()].strip()
+                    parole = parte_nome.split()
+                    if len(parole) < 2:
+                        righe_non_riconosciute.append(riga)
+                        continue
+                    nome_estratto = parole[-1]
+                    cognome_estratto = " ".join(parole[:-1])
+                    try:
+                        data_iso = f"{int(anno):04d}-{int(mese):02d}-{int(giorno):02d}"
+                        datetime.datetime.strptime(data_iso, "%Y-%m-%d")  # valida che sia una data reale
+                    except ValueError:
+                        righe_non_riconosciute.append(riga)
+                        continue
+
+                    nome_completo_import = f"{nome_estratto} {cognome_estratto}".strip()
+                    if nome_completo_import in st.session_state.db["ragazzi"]:
+                        gia_presenti.append(cognome_nome(nome_completo_import))
+                    else:
+                        st.session_state.db["ragazzi"].append(nome_completo_import)
+                        st.session_state.db.setdefault("anagrafica_nascita", {})[nome_completo_import] = data_iso
+                        aggiunti.append(cognome_nome(nome_completo_import))
+
+                if aggiunti:
+                    st.session_state.db["ragazzi"] = ordina_giocatori(st.session_state.db["ragazzi"])
+                    salvare_dati()
+                    st.success(f"✅ Aggiunti {len(aggiunti)} giocatori: {', '.join(aggiunti)}")
+                if gia_presenti:
+                    st.info(f"ℹ️ Già presenti, saltati: {', '.join(gia_presenti)}")
+                if righe_non_riconosciute:
+                    st.warning("⚠️ Righe non riconosciute (controlla il formato):\n" + "\n".join(righe_non_riconosciute))
+                if aggiunti:
+                    st.rerun()
 
         with st.expander("💾 Backup e Ripristino"):
             st.write("#### ⬇️ Scarica Backup")
