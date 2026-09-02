@@ -226,6 +226,21 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
+def documento_html_completo(contenuto):
+    """Incapsula un frammento HTML in un documento completo con codifica UTF-8 dichiarata esplicitamente.
+    Necessario per i file scaricati e aperti direttamente (fuori dall'app): senza questa dichiarazione
+    alcuni visualizzatori indovinano la codifica sbagliata e storpiano lettere accentate/simboli
+    (es. 'N°' diventa 'NÂ°', 'Nicolò' diventa 'NicolÃ²')."""
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+</head>
+<body>
+{contenuto}
+</body>
+</html>"""
+
 def genera_pdf(html_content):
     """Converte una stringa HTML in un PDF (bytes) usando WeasyPrint. Restituisce None se la generazione fallisce."""
     try:
@@ -643,8 +658,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                     html_formazione = f"""<div style='background-color: white; color: black; padding: 10px; font-family: Arial, sans-serif; width: 100%;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU_ACCENTO};'>
 <tr>
-<td style='width: 30%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
-<td style='width: 70%; border: 1px solid black; padding: 0;'>
+<td style='width: 25%; border: 1px solid black; vertical-align: middle; padding: 10px;'>{logo_immagine}</td>
+<td style='width: 75%; border: 1px solid black; padding: 0;'>
 <table style='width: 100%; border-collapse: collapse; text-align: center;'>
 <tr><td style='padding: 5px; font-weight: bold; font-size: 16px; background-color: {COLORE_BLU_ACCENTO_CHIARO}; border-bottom: 1px solid black;'>FORMAZIONE UFFICIALE</td></tr>
 <tr><td style='padding: 5px; border-bottom: 1px solid black;'>PARTITA: {sq_casa} - {sq_trasf}</td></tr>
@@ -656,9 +671,9 @@ elif menu == "🟢 Calendario e Convocazioni":
 </table>
 <table style='width: 100%; border-collapse: collapse; text-align: center; border: 2px solid {COLORE_BLU_ACCENTO}; border-top: none;'>
 <tr style='font-weight: bold; background-color: {COLORE_BLU_ACCENTO_CHIARO};'>
-<td style='border: 1px solid black; padding: 5px; width: 10%;'>N°</td>
-<td style='border: 1px solid black; padding: 5px; width: 45%;'>Cognome</td>
-<td style='border: 1px solid black; padding: 5px; width: 45%;'>Nome</td>
+<td style='border: 1px solid black; padding: 5px; width: 8%;'>N°</td>
+<td style='border: 1px solid black; padding: 5px; width: 52%;'>Cognome</td>
+<td style='border: 1px solid black; padding: 5px; width: 40%;'>Nome</td>
 </tr>
 {righe_formazione}
 </table>
@@ -841,7 +856,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             st.write("")
                             st.download_button(
                                 label="⬇️ Scarica Modulo Formazione (.html)",
-                                data=html_formazione,
+                                data=documento_html_completo(html_formazione),
                                 file_name=f"Formazione_{sq_casa}_{sq_trasf}.html",
                                 mime="text/html",
                                 key=f"dl_html_form_{ev['id']}"
@@ -865,7 +880,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                             st.warning("⚠️ Non sono riuscito a generare il PDF. Scarica la versione HTML in alternativa.")
                             st.download_button(
                                 label="⬇️ Scarica Convocazioni (.html)",
-                                data=html_distinta,
+                                data=documento_html_completo(html_distinta),
                                 file_name=f"Convocazioni_{sq_casa}_{sq_trasf}.html",
                                 mime="text/html",
                                 key=f"dl_html_conv_fallback_{ev['id']}"
