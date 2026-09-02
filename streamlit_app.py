@@ -667,7 +667,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                     separatore_wa = "-" * 20 + "\n"
                     whatsapp_text += f"\n*ELENCO GIOCATORI:*\n"
                     whatsapp_text += "```\n" + intestazione_wa + separatore_wa + righe_whatsapp + "```\n"
-                    whatsapp_text += "\n*Forza USO UNITED!* 💙💚"
 
                     tab1, tab2, tab_formazione, tab3 = st.tabs(["⚙️ Compila Elenco", "📄 Convocazioni Ufficiali", "⚽ Formazione e Dati Partita", "📱 Messaggio WhatsApp"])
                     
