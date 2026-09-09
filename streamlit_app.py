@@ -243,11 +243,11 @@ def documento_html_completo(contenuto):
 </html>"""
 
 def genera_pdf(html_content):
-    """Converte una stringa HTML in un PDF (bytes) usando WeasyPrint. Restituisce None se la generazione fallisce."""
+    """Converte una stringa HTML in un PDF (bytes) usando WeasyPrint. Restituisce None se la generazione fallisce
+    (in tal caso chi chiama questa funzione decide se e come segnalarlo)."""
     try:
         from weasyprint import HTML
-    except (ImportError, OSError) as e:
-        st.error(f"Generazione PDF non disponibile al momento (dipendenze di sistema mancanti): {e}. Uso il download in formato HTML.")
+    except (ImportError, OSError):
         return None
     try:
         documento_completo = f"""<!DOCTYPE html>
@@ -878,7 +878,6 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 key=f"dl_pdf_conv_{ev['id']}"
                             )
                         else:
-                            st.warning("⚠️ Non sono riuscito a generare il PDF. Scarica la versione HTML in alternativa.")
                             st.download_button(
                                 label="⬇️ Scarica Convocazioni (.html)",
                                 data=documento_html_completo(html_distinta),
@@ -886,6 +885,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 mime="text/html",
                                 key=f"dl_html_conv_fallback_{ev['id']}"
                             )
+                            st.caption("ℹ️ Download in formato HTML (il PDF non è momentaneamente disponibile).")
                         st.caption("📎 WhatsApp non permette di allegare automaticamente un file da un sito esterno: scarica il PDF qui sopra, poi allegalo manualmente nella chat. Nella scheda '📱 Messaggio WhatsApp' trovi un pulsante per aprire subito la chat con il testo già pronto.")
 
                     with tab3:
