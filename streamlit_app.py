@@ -245,8 +245,8 @@ def genera_pdf(html_content):
     """Converte una stringa HTML in un PDF (bytes) usando WeasyPrint. Restituisce None se la generazione fallisce."""
     try:
         from weasyprint import HTML
-    except ImportError:
-        st.error("Manca la libreria 'weasyprint' o le sue dipendenze di sistema. Controlla requirements.txt e packages.txt, poi riavvia l'app.")
+    except (ImportError, OSError) as e:
+        st.error(f"Generazione PDF non disponibile al momento (dipendenze di sistema mancanti): {e}. Uso il download in formato HTML.")
         return None
     try:
         documento_completo = f"""<!DOCTYPE html>
