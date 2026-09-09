@@ -42,7 +42,7 @@ COLORE_BLU_ACCENTO_CHIARO = "#DCE6F5" # Blu accento chiaro (sfondo intestazioni 
 # --- CONFIGURAZIONE CAMPI DI CASA ---
 # Aggiungi/modifica qui se cambiano i campi disponibili per le partite in casa.
 CAMPI_CASA = [
-    "Campo Santa Giulia - Via del Brolo 7, Villaggio Prealpino",
+    "Campo Santa Giulia",
     "Campo Comunale - Parco Urbano, Bovezzo",
 ]
 
@@ -52,6 +52,7 @@ CAMPI_ALLENAMENTO = [
     "Campo Prealpino",
     "Campo S.Andrea",
     "Ritiro Bagolino",
+    "Oratorio Bovezzo",
 ]
 
 def connetti_foglio():
