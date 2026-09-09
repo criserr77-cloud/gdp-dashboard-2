@@ -1287,7 +1287,7 @@ elif menu == "🏃 Gestione Rosa":
                 "Nome": nome_r,
                 "Data di Nascita": d_obj,
                 "Ruolo": ruolo_prec,
-                "🗑️ Elimina": False,
+                "Elimina": False,
             })
 
         df_rosa = pd.DataFrame(righe_rosa)
@@ -1301,12 +1301,12 @@ elif menu == "🏃 Gestione Rosa":
             hide_index=True,
             width="stretch",
             num_rows="fixed",
-            column_order=["Cognome", "Nome", "Data di Nascita", "🗑️ Elimina"],
+            column_order=["Cognome", "Nome", "Data di Nascita", "Elimina"],
             column_config={
                 "Cognome": st.column_config.TextColumn("Cognome", width="medium"),
                 "Nome": st.column_config.TextColumn("Nome", width="medium"),
                 "Data di Nascita": st.column_config.DateColumn("Data di Nascita", format="DD/MM/YYYY", width="small"),
-                "🗑️ Elimina": st.column_config.CheckboxColumn("🗑️ Elimina", width="small"),
+                "Elimina": st.column_config.CheckboxColumn("🗑️ Elimina", width="small"),
             },
         )
 
@@ -1315,7 +1315,7 @@ elif menu == "🏃 Gestione Rosa":
             nomi_superstiti = []
             errori = []
             for idx, row in df_rosa_edit.iterrows():
-                if bool(row["🗑️ Elimina"]):
+                if bool(row["Elimina"]):
                     continue
                 nome_pulito = str(row["Nome"]).strip()
                 cognome_pulito = str(row["Cognome"]).strip()
@@ -1336,7 +1336,7 @@ elif menu == "🏃 Gestione Rosa":
                 for idx, row in df_rosa_edit.iterrows():
                     nome_originale = nomi_originali[idx]
 
-                    if bool(row["🗑️ Elimina"]):
+                    if bool(row["Elimina"]):
                         if nome_originale in st.session_state.db.get("anagrafica_ruolo", {}):
                             del st.session_state.db["anagrafica_ruolo"][nome_originale]
                         if nome_originale in st.session_state.db.get("anagrafica_nascita", {}):
