@@ -578,16 +578,10 @@ elif menu == "🟢 Calendario e Convocazioni":
                     note_agg = ev.get("note_aggiuntive", "")
                     
                     righe_giocatori = ""
-                    righe_whatsapp = ""
+                    lista_convocati_wa = ""
                     convocati_list = []
                     non_convocati_list = []
                     riga_num = 1
-
-                    # Larghezza colonna Cognome calcolata sul cognome più lungo in rosa (min 9, max 20),
-                    # così il nome intero è sempre visibile e la tabella si adatta da sola se la rosa cambia.
-                    larghezza_cognome_wa = 9
-                    if st.session_state.db["ragazzi"]:
-                        larghezza_cognome_wa = max(9, min(20, max(len(dividi_nome(g)[1]) for g in st.session_state.db["ragazzi"])))
                     
                     for ragazzo in ordina_giocatori(st.session_state.db["ragazzi"]):
                         stato = appello_evento.get(ragazzo, "🟢 Convocato")
@@ -598,14 +592,11 @@ elif menu == "🟢 Calendario e Convocazioni":
                         
                         if is_convocato:
                             convocati_list.append(ragazzo)
+                            nome_wa, cognome_wa = dividi_nome(ragazzo)
+                            nome_iniziale_wa = f"{nome_wa[0].upper()}." if nome_wa else ""
+                            lista_convocati_wa += f"{cognome_wa} {nome_iniziale_wa}\n"
                         else:
                             non_convocati_list.append(ragazzo)
-
-                        nome_wa, cognome_wa = dividi_nome(ragazzo)
-                        nome_iniziale_wa = f"{nome_wa[0].upper()}." if nome_wa else ""
-                        c_wa = "✓" if is_convocato else " "
-                        nc_wa = "✓" if not is_convocato else " "
-                        righe_whatsapp += f"{cognome_wa[:larghezza_cognome_wa]:<{larghezza_cognome_wa + 1}}{nome_iniziale_wa:<4}{c_wa:^3}{nc_wa:^3}\n"
                             
                         righe_giocatori += f"<tr><td style='border: 1px solid black; padding: 5px;'>{riga_num}</td><td style='border: 1px solid black; padding: 5px; text-align: left;'>{cognome_nome(ragazzo)}</td><td style='border: 1px solid black; padding: 5px; color: green; font-weight: bold;'>{c_mark}</td><td style='border: 1px solid black; padding: 5px; color: red; font-weight: bold;'>{nc_mark}</td></tr>"
                         riga_num += 1
@@ -690,10 +681,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                     whatsapp_text += f"🏟️ *Luogo:* {ind_campo}\n"
                     if note_agg: whatsapp_text += f"📝 *Note:* {note_agg}\n"
                         
-                    intestazione_wa = f"{'Cognome':<{larghezza_cognome_wa + 1}}{'Nome':<4}{'C':^3}{'NC':^3}\n"
-                    separatore_wa = "-" * (larghezza_cognome_wa + 1 + 4 + 3 + 3) + "\n"
-                    whatsapp_text += f"\n*ELENCO GIOCATORI:*\n"
-                    whatsapp_text += "```\n" + intestazione_wa + separatore_wa + righe_whatsapp + "```\n"
+                    whatsapp_text += f"\n*ELENCO CONVOCATI:*\n"
+                    whatsapp_text += lista_convocati_wa if lista_convocati_wa else "_(nessun convocato ancora selezionato)_\n"
 
                     tab1, tab2, tab_formazione, tab3 = st.tabs(["⚙️ Compila Elenco", "📄 Convocazioni Ufficiali", "⚽ Formazione e Dati Partita", "📱 Messaggio WhatsApp"])
                     
