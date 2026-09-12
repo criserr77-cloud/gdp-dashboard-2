@@ -42,8 +42,9 @@ COLORE_BLU_ACCENTO_CHIARO = "#DCE6F5" # Blu accento chiaro (sfondo intestazioni 
 # --- CONFIGURAZIONE CAMPI DI CASA ---
 # Aggiungi/modifica qui se cambiano i campi disponibili per le partite in casa.
 CAMPI_CASA = [
-    "Campo Santa Giulia",
+    "Campo Prealpino",
     "Campo Comunale - Parco Urbano, Bovezzo",
+    "Campo S. Andrea",
 ]
 
 # --- CONFIGURAZIONE CAMPI ALLENAMENTO ---
