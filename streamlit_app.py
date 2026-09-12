@@ -680,6 +680,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     whatsapp_text += f"📍 *Ora Ritrovo:* {ev.get('ora_convocazione', '___')}\n"
                     whatsapp_text += f"🏟️ *Luogo:* {ind_campo}\n"
                     if note_agg: whatsapp_text += f"📝 *Note:* {note_agg}\n"
+                    whatsapp_text += "👕 *Parastinchi obbligatori, raccomando la puntualità.*\n"
                         
                     whatsapp_text += f"\n*ELENCO CONVOCATI:*\n"
                     whatsapp_text += lista_convocati_wa if lista_convocati_wa else "_(nessun convocato ancora selezionato)_\n"
