@@ -32,6 +32,11 @@ def connetti_firebase():
 # --- CONFIGURAZIONE REGOLAMENTO ---
 MAX_TITOLARI = 9  # Numero massimo di titolari selezionabili per partita (es. 9 per il calcio a 9)
 
+# --- CONFIGURAZIONE TEMPI DI GIOCO ---
+# Tipi di partita in cui è possibile inserire un 4° tempo FACOLTATIVO (se lasciato vuoto, il tempo non è stato giocato).
+# Per abilitarlo anche alle amichevoli basta scrivere: ["Campionato", "Amichevole"]
+TIPI_PARTITA_CON_4_TEMPO = ["Campionato"]
+
 # --- CONFIGURAZIONE COLORI (tema Blu/Verde) ---
 # Cambia solo questi valori per modificare la palette in tutta l'app e nei documenti scaricabili.
 COLORE_BLU = "#002255"          # Blu navy esatto dello stemma (campionato dall'immagine) — colore principale
@@ -560,7 +565,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                     with col_del:
                         if st.button("🗑️ Elimina Gara", key=f"del_evp_{ev['id']}"):
                             st.session_state.db["eventi"] = [e for e in st.session_state.db["eventi"] if e["id"] != ev["id"]]
-                            if ev["id"] in st.session_state.db["presenze"]: del st.session_state.db["presenze"][ev["id"]]
+                            if ev["id"] in st.session_state.db["storico_presenze"]: del st.session_state.db["storico_presenze"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_titolari"]: del st.session_state.db["storico_titolari"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_numeri"]: del st.session_state.db["storico_numeri"][ev["id"]]
                             if ev["id"] in st.session_state.db["storico_gol"]: del st.session_state.db["storico_gol"][ev["id"]]
@@ -735,6 +740,8 @@ elif menu == "🟢 Calendario e Convocazioni":
                     with tab_formazione:
                         st.write("#### 🏆 Risultato Gara")
                         e_coppa = (tipo_partita == "Coppa Brescia")
+                        ha_quarto_tempo = (tipo_partita in TIPI_PARTITA_CON_4_TEMPO)
+                        ris_t4 = ""
                         if e_coppa:
                             st.caption("Partita di Coppa: risultato su 2 tempi.")
                             col_t1, col_t2 = st.columns(2)
@@ -751,6 +758,11 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 ris_t2 = st.text_input("2° Tempo (es. 2-2)", value=ris_evento.get("t2", ""), key=f"ris_t2_{ev['id']}")
                             with col_t3:
                                 ris_t3 = st.text_input("3° Tempo (es. 0-1)", value=ris_evento.get("t3", ""), key=f"ris_t3_{ev['id']}")
+                            if ha_quarto_tempo:
+                                col_t4, _col_vuota_a, _col_vuota_b = st.columns(3)
+                                with col_t4:
+                                    ris_t4 = st.text_input("4° Tempo (facoltativo)", value=ris_evento.get("t4", ""), key=f"ris_t4_{ev['id']}")
+                                st.caption("Il 4° tempo è facoltativo: lascialo vuoto se non è stato giocato.")
                         
                         st.write("---")
                         st.write("#### ⚽ Inserisci Formazione e Prestazioni")
@@ -841,7 +853,7 @@ elif menu == "🟢 Calendario e Convocazioni":
                                 else:
                                     st.session_state.db["storico_titolari"][ev["id"]] = nuovi_titolari
                                     st.session_state.db["storico_numeri"][ev["id"]] = nuovi_numeri
-                                    st.session_state.db["storico_risultati"][ev["id"]] = {"t1": ris_t1, "t2": ris_t2, "t3": ris_t3}
+                                    st.session_state.db["storico_risultati"][ev["id"]] = {"t1": ris_t1, "t2": ris_t2, "t3": ris_t3, "t4": ris_t4}
                                     st.session_state.db["storico_gol"][ev["id"]] = resoconto_gol
                                     st.session_state.db.setdefault("storico_capitano", {})[ev["id"]] = input_capitano if input_capitano != "Nessuno" else ""
                                     st.session_state.db.setdefault("storico_vicecapitano", {})[ev["id"]] = input_vice if input_vice != "Nessuno" else ""
@@ -1094,6 +1106,7 @@ elif menu == "📈 Statistiche Squadra":
     vittorie_t1, pareggi_t1, sconfitte_t1 = 0, 0, 0
     vittorie_t2, pareggi_t2, sconfitte_t2 = 0, 0, 0
     vittorie_t3, pareggi_t3, sconfitte_t3 = 0, 0, 0
+    vittorie_t4, pareggi_t4, sconfitte_t4 = 0, 0, 0
     
     righe_partite = ""
     
@@ -1102,8 +1115,9 @@ elif menu == "📈 Statistiche Squadra":
         t1 = ris_evento.get("t1", "")
         t2 = ris_evento.get("t2", "")
         t3 = ris_evento.get("t3", "")
+        t4 = ris_evento.get("t4", "")
         
-        if t1 or t2 or t3:
+        if t1 or t2 or t3 or t4:
             tot_partite += 1
             luogo_gara = ev.get("luogo", "Casa")
             e_coppa_stat = (ev.get("nota", "Campionato") == "Coppa Brescia")
@@ -1111,6 +1125,7 @@ elif menu == "📈 Statistiche Squadra":
             esito_t1 = esito_singolo_tempo(t1, luogo_gara)
             esito_t2 = esito_singolo_tempo(t2, luogo_gara)
             esito_t3 = esito_singolo_tempo(t3, luogo_gara)
+            esito_t4 = esito_singolo_tempo(t4, luogo_gara)
             if esito_t1 == "V": vittorie_t1 += 1
             elif esito_t1 == "P": pareggi_t1 += 1
             elif esito_t1 == "S": sconfitte_t1 += 1
@@ -1120,15 +1135,19 @@ elif menu == "📈 Statistiche Squadra":
             if esito_t3 == "V": vittorie_t3 += 1
             elif esito_t3 == "P": pareggi_t3 += 1
             elif esito_t3 == "S": sconfitte_t3 += 1
+            if esito_t4 == "V": vittorie_t4 += 1
+            elif esito_t4 == "P": pareggi_t4 += 1
+            elif esito_t4 == "S": sconfitte_t4 += 1
             pu1, pa1, gf1, gs1 = parse_tempo(t1, luogo_gara)
             pu2, pa2, gf2, gs2 = parse_tempo(t2, luogo_gara)
             pu3, pa3, gf3, gs3 = parse_tempo(t3, luogo_gara)
+            pu4, pa4, gf4, gs4 = parse_tempo(t4, luogo_gara)
             
-            p_uso_tot = pu1 + pu2 + pu3
-            p_avv_tot = pa1 + pa2 + pa3
+            p_uso_tot = pu1 + pu2 + pu3 + pu4
+            p_avv_tot = pa1 + pa2 + pa3 + pa4
             
-            gf_partita = gf1 + gf2 + gf3
-            gs_partita = gs1 + gs2 + gs3
+            gf_partita = gf1 + gf2 + gf3 + gf4
+            gs_partita = gs1 + gs2 + gs3 + gs4
             
             tot_gf += gf_partita
             tot_gs += gs_partita
@@ -1165,7 +1184,7 @@ elif menu == "📈 Statistiche Squadra":
             sq_trasf = ev.get("avversario", "Avversario") if luogo_gara == "Casa" else "USO UNITED"
             stringa_partita = f"{sq_casa}-{sq_trasf}"
             
-            righe_partite += f"<tr><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{data_f}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{stringa_partita}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t1 if t1 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t2 if t2 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t3 if t3 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px; font-weight: bold;'>{esito_tabella}</td></tr>"
+            righe_partite += f"<tr><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{data_f}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{stringa_partita}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t1 if t1 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t2 if t2 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t3 if t3 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px;'>{t4 if t4 else '-'}</td><td style='border: 1px solid rgba(128,128,128,0.3); padding: 8px; font-weight: bold;'>{esito_tabella}</td></tr>"
 
     riepilogo_html = f"""<table style="width: 100%; border-collapse: collapse; text-align: center; margin-bottom: 20px; color: var(--text-color);">
 <tr style="background-color: rgba(128,128,128,0.2); font-weight: bold;">
@@ -1189,7 +1208,7 @@ elif menu == "📈 Statistiche Squadra":
 
     st.write("---")
     st.subheader("⏱️ Statistiche per Tempo")
-    st.caption("Vittorie, pareggi e sconfitte contati singolarmente per ciascun tempo di gioco, su tutte le partite con un risultato inserito. Le partite di Coppa hanno solo 1° e 2° tempo, per questo non contribuiscono alla riga del 3° tempo.")
+    st.caption("Vittorie, pareggi e sconfitte contati singolarmente per ciascun tempo di gioco, su tutte le partite con un risultato inserito. Le partite di Coppa hanno solo 1° e 2° tempo, mentre il 4° tempo è facoltativo (solo campionato): le righe del 3° e del 4° tempo contano quindi solo le partite in cui quel tempo è stato giocato.")
     tabella_tempi_html = f"""<table style="width: 100%; border-collapse: collapse; text-align: center; margin-bottom: 20px; color: var(--text-color);">
 <tr style="background-color: rgba(128,128,128,0.2); font-weight: bold;">
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3);">Tempo</td>
@@ -1215,6 +1234,12 @@ elif menu == "📈 Statistiche Squadra":
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); color: #FF9800; font-weight: bold;">{pareggi_t3}</td>
 <td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); color: #F44336; font-weight: bold;">{sconfitte_t3}</td>
 </tr>
+<tr>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); font-weight: bold;">4° Tempo (facoltativo)</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); color: #4CAF50; font-weight: bold;">{vittorie_t4}</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); color: #FF9800; font-weight: bold;">{pareggi_t4}</td>
+<td style="padding: 10px; border: 1px solid rgba(128,128,128,0.3); color: #F44336; font-weight: bold;">{sconfitte_t4}</td>
+</tr>
 </table>"""
     st.markdown(tabella_tempi_html, unsafe_allow_html=True)
     
@@ -1230,6 +1255,7 @@ elif menu == "📈 Statistiche Squadra":
 <td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">1° T</td>
 <td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">2° T</td>
 <td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">3° T</td>
+<td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3);">4° T</td>
 <td style="padding: 8px; border: 1px solid rgba(128,128,128,0.3); color: #4CAF50;">Punti Tempi</td>
 </tr>
 {righe_partite}
