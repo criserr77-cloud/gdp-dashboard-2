@@ -11,8 +11,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-'# --- CONFIGURAZIONE GOOGLE SHEETS ---
-'ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
+# --- CONFIGURAZIONE GOOGLE SHEETS ---
+#ID_FOGLIO_GOOGLE = "1PCmJ9tgv-ohAIuc3CmwP4BOZLg68qSLmkLYwSQ7pSsc" 
 
 # --- CONFIGURAZIONE FIREBASE (backup, oltre a Google Sheets) ---
 FIREBASE_ATTIVO = True  # In pausa: rimetti a True quando vuoi riattivare il backup su Firebase
